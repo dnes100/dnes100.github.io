@@ -1,9 +1,13 @@
+<!DOCTYPE html>
 <html>
+
   <head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" type="text/css" href="styles.css" />
   </head>
 
 
-  <body class="body">
+  <body>
 
     <div class="main">
       Dinesh Hyaunmikha
@@ -16,85 +20,6 @@
 
   </body>
 
-  <style>
-    .body {
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
+  <script src="js/index.js"></script>
 
-    .main {
-    }
-
-    .footer {
-    }
-
-    #led {
-      width: 1em;
-      height: 1em;
-      margin-left: auto;
-    }
-
-    .led-green {
-      background-color: #7FFF00;
-      border-radius: 50%;
-      box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #006 0 -1px 9px, #3F8CFF 0 2px 14px;
-    }
-
-    .led-yellow{
-      background-color: #FF0;
-      border-radius: 50%;
-      box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #808002 0 -1px 9px, #FF0 0 2px 12px;
-      -webkit-animation: blinkYellow 1s infinite;
-      -moz-animation: blinkYellow 1s infinite;
-      -ms-animation: blinkYellow 1s infinite;
-      -o-animation: blinkYellow 1s infinite;
-      animation: blinkYellow 1s infinite;
-    }
-
-    @-webkit-keyframes blinkYellow {
-      from { background-color: #FF0; }
-      50% { background-color: #AA0; box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #808002 0 -1px 9px, #FF0 0 2px 0; }
-      to { background-color: #FF0; }
-    }
-
-    @-moz-keyframes blinkYellow {
-      from { background-color: #FF0; }
-      50% { background-color: #AA0; box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #808002 0 -1px 9px, #FF0 0 2px 0; }
-      to { background-color: #FF0; }
-    }
-
-    @-o-keyframes blinkYellow {
-      from { background-color: #FF0; }
-      50% { background-color: #AA0; box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #808002 0 -1px 9px, #FF0 0 2px 0; }
-      to { background-color: #FF0; }
-    }
-
-    @keyframes blinkYellow {
-      from { background-color: #FF0; }
-      50% { background-color: #AA0; box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #808002 0 -1px 9px, #FF0 0 2px 0; }
-      to { background-color: #FF0; }
-    }
-
-  </style>
-
-  <script>
-    console.log('Dinesh Hyaunmikha');
-
-    let mouseTimer = null;
-
-    document.onmousemove = function(e) {
-      let led = document.getElementById('led');
-      led.classList.add('led-yellow')
-
-      clearTimeout(mouseTimer);
-      mouseTimer = setTimeout(onMouseStop, 100);
-    }
-
-    const onMouseStop = function() {
-      let led = document.getElementById('led');
-      led.classList.remove('led-yellow')
-    }
-
-  </script>
 </html>
