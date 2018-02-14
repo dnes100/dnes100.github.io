@@ -1,25 +1,16 @@
 console.log('Dinesh Hyaunmikha');
 
-let mouseTimer = null;
-
-document.onmousemove = function(e) {
-  let led = document.getElementById('led');
-  led.classList.add('led-yellow')
-
-  clearTimeout(mouseTimer);
-  mouseTimer = setTimeout(onMouseStop, 100);
-}
-
-onMouseStop = function() {
-  let led = document.getElementById('led');
-  led.classList.remove('led-yellow')
-}
-
 function Dinesh() {
   const othis = this;
 
   this.main = document.getElementById('main');
   this.body = document.getElementsByTagName('body')[0];
+  this.nameDiv = document.getElementsByClassName('name')[0];
+
+  this._mouseTimer = null;
+  this.led = document.getElementsByClassName('led')[0];
+
+  led = this.led;
 
   this.name = '';
   this._chars = [];
@@ -30,13 +21,24 @@ function Dinesh() {
       if(othis.name === 'clear') {
         othis.name = 'Dinesh Hyaunmikha';
       }
-      othis.main.innerText = othis.name;
+      othis.nameDiv.innerText = othis.name;
       othis._chars = [];
 
       return;
     }
 
     othis._chars.push(event.key);
+  }
+
+  document.onmousemove = function(e) {
+    othis.led.classList.add('led-yellow')
+
+    clearTimeout(othis.mouseTimer);
+    othis.mouseTimer = setTimeout(othis._onMouseStop, 100);
+  }
+
+  this._onMouseStop = function() {
+    othis.led.classList.remove('led-yellow')
   }
 
 }
