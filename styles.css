@@ -1,15 +1,12 @@
-html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-}
 
 body {
   background: rgb(48, 10, 36);
-  background: rgba(48, 10, 36, 1);
   font-family: 'monaco';
-  font-size: 1.15em;
   color: white;
+}
+
+a {
+  color: #0000AA;
 }
 
 .container {
@@ -30,15 +27,26 @@ body {
   align-items: center;
 }
 
+.row {
+  display: flex;
+  flex-direction: row;
+  //align-items: center;
+}
+
 .tilde {
   color: #40E0D0;
   font-weight: bold;
   padding-right: 1em;
 }
 
+.command {
+  color: #40E0D0;
+}
+
 .code {
   font-family: 'monaco';
   color: #CCCCCC;
+  overflow-x: auto;
 }
 
 .box-text {

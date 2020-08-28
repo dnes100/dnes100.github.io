@@ -5,14 +5,14 @@ def generate_intro_letter(options = {})
 
   [
     'Hello',
-    (recipient),
+    recipient,
     ('!,' if recipient),
     '\n\n',
-    (messages.join('\n') if messages),
+    messages&.join('\n'),
     ('\n\n' if messages),
     'Thanks :)',
     '\n',
-    (options[:name] if name),
+    name,
   ].compact.join(' ')
 end
 

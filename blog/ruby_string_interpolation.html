@@ -3,7 +3,7 @@
 
   <head>
     <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=0.7">
     <link rel="stylesheet" type="text/css" href="../styles.css" />
   </head>
 
@@ -12,10 +12,12 @@
     <div class="container">
 
       <div>
-        <h2 class="tilde">
-          ~
-          <span class="name">Ruby string #{<i>interpolation</i>} with arrays!</span>
-        </h2>
+        <h3 class="row command">
+          <div class="tilde">~</div>
+          <div>
+            Ruby string #{<i>interpolation</i>} with arrays!
+          </div>
+        </h3>
 
         <pre class="code">
           def generate_intro_letter(options = {})
@@ -25,21 +27,26 @@
 
             [
               'Hello',
-              (<var>recipient</var>),
+              <var>recipient</var>,
               ('!,' if <var>recipient</var>),
               '\n\n',
-              (<var>messages</var>.join('\n') if <var>messages</var>),
+              <var>messages</var>&.join('\n'),
               ('\n\n' if <var>messages</var>),
               'Thanks :)',
               '\n',
-              (<var>name</var> if <var>name</var>),
+              <var>name</var>,
             ].compact.join(' ')
           end
         </pre>
 
         <div>
           <br />
-          <p class="tilde">~ Version One:</p>
+
+          <div class="row command">
+            <div class="tilde">~</div>
+            <div>Version One:</div>
+          </div>
+
           <pre class="code">
             puts generate_intro_letter
           </pre>
@@ -52,7 +59,11 @@
 
         <div>
           <br />
-          <p class="tilde">~ Version Two:</p>
+          <div class="row command">
+            <div class="tilde">~</div>
+            <div>Version Two:</div>
+          </div>
+
           <pre class="code">
             <var>messages</var> = [
               'Ruby has few ways of composing strings dynamically',
@@ -73,7 +84,10 @@
 
         <div>
           <br />
-          <p class="tilde">~ Version Three:</p>
+          <div class="row command">
+            <div class="tilde">~</div>
+            <div>Version Three:</div>
+          </div>
           <pre class="code">
             puts generate_intro_letter({
               recipient: 'Fellow rubyists',
