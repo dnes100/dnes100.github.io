@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="../styles.css" />
+  </head>
+
+
+  <body>
+    <div class="container">
+
+      <div>
+        <h2 class="tilde">
+          ~
+          <span class="name">Ruby string #{<i>interpolation</i>} with arrays!</span>
+        </h2>
+
+        <pre class="code">
+          def generate_intro_letter(options = {})
+            <var>recipient</var> = options[:recipient]
+            <var>messages</var> = options[:messages]
+            <var>name</var> = options[:name]
+
+            [
+              'Hello',
+              (<var>recipient</var>),
+              ('!,' if <var>recipient</var>),
+              '\n\n',
+              (<var>messages</var>.join('\n') if <var>messages</var>),
+              ('\n\n' if <var>messages</var>),
+              'Thanks :)',
+              '\n',
+              (<var>name</var> if <var>name</var>),
+            ].compact.join(' ')
+          end
+        </pre>
+
+        <div>
+          <br />
+          <p class="tilde">~ Version One:</p>
+          <pre class="code">
+            puts generate_intro_letter
+          </pre>
+
+          <p class="box-text">
+            Hello <br /><br /> Thanks :) <br />
+          </p>
+        </div>
+
+
+        <div>
+          <br />
+          <p class="tilde">~ Version Two:</p>
+          <pre class="code">
+            <var>messages</var> = [
+              'Ruby has few ways of composing strings dynamically',
+              'Eg: "a".concat "b", "a" + "b", "a#{b}", heredoc',
+              'We can use array.join() method to compose long strings in a cleaner way',
+              'More effective for single liners but longer strings',
+            ]
+            puts generate_intro_letter({
+              messages: messages,
+            })
+          </pre>
+
+          <p class="box-text">
+          Hello <br /><br /> Ruby has few ways of composing strings dynamically.<br />Eg: "a".concat "b", "a" + "b", "a#{b}", heredoc, etc.<br />We can use array.join() method to compose long strings in a cleaner way.<br />More effective for single liners but longer strings. <br /><br /> Thanks :) <br />
+          </p>
+        </div>
+
+
+        <div>
+          <br />
+          <p class="tilde">~ Version Three:</p>
+          <pre class="code">
+            puts generate_intro_letter({
+              recipient: 'Fellow rubyists',
+              messages: <var>messages</var>,
+              name: 'Dinesh Hyaunmikha',
+            })
+          </pre>
+
+          <p class="box-text">
+          Hello Fellow rubyists !, <br /><br /> Ruby has few ways of composing strings dynamically.<br />Eg: "a".concat "b", "a" + "b", "a#{b}", heredoc, etc.<br />We can use array.join() method to compose long strings in a cleaner way.<br />More effective for single liners but longer strings. <br /><br /> Thanks :) <br /> Dinesh Hyaunmikha
+          </p>
+        </div>
+
+
+
+      </div>
+
+      <div class="footer">
+        <div class="led led-green">
+        </div>
+      </div>
+
+    </div>
+  </body>
+
+  <script src="../js/index.js"></script>
+
+</html>

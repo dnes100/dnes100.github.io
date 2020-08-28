@@ -36,6 +36,17 @@ body {
   padding-right: 1em;
 }
 
+.code {
+  font-family: 'monaco';
+  color: #CCCCCC;
+}
+
+.box-text {
+  border: 1px solid #40E0D0;
+  padding: 10px;
+  text-align: center;
+}
+
 .led {
   width: 1em;
   height: 1em;
