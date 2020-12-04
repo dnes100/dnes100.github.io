@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=0.7">
+    <link rel="stylesheet" type="text/css" href="../styles.css" />
+  </head>
+
+
+  <body>
+    <div class="container">
+
+      <div>
+        <h3 class="row command">
+          <div class="tilde">~</div>
+          <div>
+            Ruby <i>/Regexp/</i> === <i>number</i>
+          </div>
+        </h3>
+
+        <pre class="code">
+          # Regex works only for string arguments.
+          /d{9}/ === '123456789'
+          # => true
+          # Correct
+
+          # For Integer/Float argument it doesn't work correctly
+          /d{9}/ === 123456789
+          # => false
+          # Wrong
+        </pre>
+
+        <div>
+          <br />
+
+          <div class="row command">
+            <div class="tilde">~</div>
+            <div>Easy solution:</div>
+          </div>
+
+          <pre class="code">
+            # Create a new intermediate (proxy) class to forward '===' method call
+            class DnesRegexp
+              def initialize(pattern)
+                @pattern = pattern
+              end
+
+              def ===(input)
+                @pattern === input.to_s
+              end
+            end
+          </pre>
+        </div>
+
+
+        <div>
+          <br />
+          <div class="row command">
+            <div class="tilde">~</div>
+            <div>Usage:</div>
+          </div>
+
+          <pre class="code">
+            DnesRegexp.new(/d{9}/) === '123456789'
+            # => true
+
+            DnesRegexp.new(/d{9}/) === 123456789
+            # => true
+
+            DnesRegexp.new(/d{9}/) === 123456789.123
+            # => true
+
+            DnesRegexp.new(//) === nil
+            # => true
+            # This nil checking is a bonus that comes free with same code !
+          </pre>
+        </div>
+      </div>
+
+
+      <div class="footer">
+        <div class="led led-green">
+        </div>
+      </div>
+
+    </div>
+  </body>
+
+  <script src="../js/index.js"></script>
+
+</html>
