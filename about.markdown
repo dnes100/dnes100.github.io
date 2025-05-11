@@ -4,15 +4,17 @@ title: About
 permalink: /about/
 ---
 
-This is the base Jekyll theme. You can find out more info about customizing your Jekyll theme, as well as basic Jekyll usage documentation at [jekyllrb.com](https://jekyllrb.com/)
+Ruby on Rails developer learning software development since 2012.
+Currently excited about Hotwire and Phlex.
 
-You can find the source code for Minima at GitHub:
-[jekyll][jekyll-organization] /
-[minima](https://github.com/jekyll/minima)
+Software philosophy:
+- Keep it simple.
+- Clean code with clear intent.
+- Unit tests for rapid feedback.
 
-You can find the source code for Jekyll at GitHub:
-[jekyll][jekyll-organization] /
-[jekyll](https://github.com/jekyll/jekyll)
+Keywords: Ruby, Rails, Javascript, React, React Native, Vue, graphql, rest, postgresql, sqlite, watermelondb, sidekiq, selenium, ocr, kubernetes, optimization, refactoring
 
+Employed @ *Houzz*
 
-[jekyll-organization]: https://github.com/jekyll
+Previously worked for *Sibesonke*, *Playven*, *Nord Pool*, *Visilean*, *Cybage*
+
