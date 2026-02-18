@@ -1,0 +1,358 @@
+---
+layout: post
+title: "Wordle - word guessing game"
+date: 2025-02-18
+categories: games
+---
+
+A simple Wordle-style word guessing game. Play below.
+
+<div style="min-width:220px;" markdown="1">
+**How to play**
+- Guess the hidden word.
+- <span style="display:inline-block;padding:0 6px;margin:0 2px;background:#e0e0e0;border-radius:4px;font-weight:bold;">←</span> / <span style="display:inline-block;padding:0 6px;margin:0 2px;background:#e0e0e0;border-radius:4px;font-weight:bold;">→</span> to decrease or increase word length (3–7 letters).
+- Type a letter to fill the current row; **Backspace** to remove the last letter; **Enter** to submit a guess.
+- After each guess, the colors show how close you were:
+  - <span style="color:#6aaa64;font-weight:bold;"><span style="display:inline-block;width:14px;height:14px;background:#6aaa64;margin-right:6px;vertical-align:middle;border-radius:2px;"></span>Green</span> — letter is in the word and in the correct spot.
+  - <span style="color:#b59f3b;font-weight:bold;"><span style="display:inline-block;width:14px;height:14px;background:#c9b458;margin-right:6px;vertical-align:middle;border-radius:2px;"></span>Yellow</span> — letter is in the word but in the wrong spot.
+  - <span style="color:#787c7e;font-weight:bold;"><span style="display:inline-block;width:14px;height:14px;background:#787c7e;margin-right:6px;vertical-align:middle;border-radius:2px;"></span>Gray</span> — letter is not in the word.
+</div>
+
+<div id="wordle"></div>
+
+<script>
+// Word lists by length. Replace with API fetch later.
+const WORD_LISTS = {
+  3: ['add','age','aim','air','all','and','ant','any','arm','art','ask','bad','bag','bar','bat','bay','bed','bee','bet','big','bit','box','boy','bus','but','buy','can','car','cat','cup','cut','day','dog','dot','dry','eat','end','eye','far','fat','few','fit','fix','fly','for','fun','get','god','got','gun','hay','act','aid','ail','ale','arc','ark','ash','ate','axe','ban','beg','bid','bin','bog','bow','bra','bud','bug','bun','cab','cam','cap','cob','cod','cog','con','cop','cot','cow','coy','cub','cud','cue','cur','dab','dad','dam','den','dew','did','die','dig','dim','din','dip','doc','doe','don','dug','dun','duo','dye','ear','eel','egg','ego','elm','emu','era','eve','ewe','fan','fax','fed','fee','fen','fig','fin','fir','flu','foe','fog','fop','fox','fry','fur','gab','gad','gag','gal','gap','gas','gel','gem','gig','gnu','gob','gum','gut','guy','gym','had','hag','ham','has','hem','hen','hey','hid','hip','hob','hod','hoe','hog','hon','hop'],
+  4: ['able','acid','aged','also','area','army','away','baby','back','ball','band','bank','base','bath','bear','beat','been','beer','bell','belt','best','bill','bird','bite','blue','boat','body','bomb','bond','bone','book','boot','born','boss','both','bowl','bulk','burn','busy','call','calm','came','camp','card','care','case','cash','cast','chat','chip','bait','bake','bald','balm','bane','bang','barb','bard','bare','bark','barn','bars','bash','bask','bass','bate','bead','beak','beam','bean','beau','beds','bees','beet','begs','bend','bent','berg','beta','bias','bide','bile','bilk','bind','bing','bins','bled','blew','blob','bloc','blot','blow','blur','boar','bode','boil','bold','bolt','bong','bonk','bony','boom','boon','boor','bore','bots','bout','bows','brad','brag','bran','bras','brat','bray','bred','brew','brie','brig','brim','brio','brit','brow','buck','buff','bulb','bull','bump','bunk','buoy','burp','burr','bury','bush','busk','bust','buzz','byes','byre','byte','cage','cake','calf','cane','cans','cant','cape','caps','carp','cars','cart','cave','caws','cede','cent','chef','chem','chew','chic','chin','chop','chord','chore','chose','chug','chum','cite','city','clad','claim','clam','clan','clap','claw','clay','clean','clear','clef','clew'],
+  5: ['about','above','abuse','actor','acute','admit','adopt','adult','after','again','agent','agree','ahead','alarm','album','alert','alike','alive','allow','alone','along','alter','among','anger','angle','angry','apart','apple','apply','arena','argue','arise','array','asset','audit','avoid','award','aware','badly','baker','bases','basic','basis','batch','beach','began','begin','begun','being','below','bench','bends','beret','bergs','berry','berth','beset','betel','bevel','bezel','bible','bicep','biddy','bided','bider','bides','bidet','biers','bight','bigot','biked','biker','bikes','biles','bilge','bilks','bills','billy','bimbo','binds','binge','bingo','birch','birth','bison','biter','bites','blame','bland','blank','blare','blast','blaze','bleak','bleat','bleed','bleep','blend','bless','blimp','blind','blink','blips','bliss','blitz','bloat','block','blocs','bloke','blond','blood','bloom','blots','blown','blows','bluer','blues','bluff','blunt','blurb','blurs','blurt','blush','board','boast','bobby','bogey','boggy','boils','bolds','bolts','bombs','bonus','booth','boots','booze','boozy','booty','bores','borne','boron','bound','bouts','bowed','bowel','bower','bowls','brace','braid','brain','brake'],
+  6: ['ability','abroad','accept','access','across','action','active','actual','advice','affect','afford','afraid','agency','agenda','almost','along','always','amount','animal','annual','answer','anyone','anyway','appeal','appear','around','arrive','artist','assume','attack','attempt','attend','author','autumn','backup','barely','battle','beauty','become','before','behind','belief','belong','better','beyond','bishop','border','bottle','bottom','branch','breast'],
+  7: ['ability','absence','academy','account','achieve','acquire','address','advance','adverse','advice','against','airport','alcohol','already','announce','another','anxiety','apology','appeal','appear','applied','appoint','approach','approve','archive','arrival','article','assault','attempt','attract','audience','average','balance','barrier','battery','bearing','benefit','besides','between','billion','biology','brother','building','cabinet','campaign','capable','capital','capture','careful','central','challenge']
+};
+
+// --- WordGuessingGame spec ---
+// CONFIG: constructor(options = {})
+//   options: { containerId, numberOfTries, numberOfLetters } (defaults e.g. 6, 5)
+//   containerId: DOM id of the container; game creates all UI inside it.
+// WORD: Pick random word from WORD_LISTS[numberOfLetters], normalize to lowercase. Save as this.targetWord.
+// DOM: Find container by id. Clear it. Build grid of divs (not inputs): rows = numberOfTries, cols = numberOfLetters. Style as rectangular cells. Only one row is "current" (accepts input); track currentRowIndex (0-based).
+// INPUT: Only allow letter keypresses (a–z); ignore non-letters. All display and targetWord in lowercase.
+//   Typing: append letter to current row (left to right), one cell per character. Max numberOfLetters per row.
+//   Backspace: remove last character in current row and move focus/selection one cell left.
+//   Enter: submit current row only if it has exactly numberOfLetters letters. Otherwise ignore or show gently flash remainig inputs
+// FEEDBACK (Enter on complete row): Compare guess to targetWord. For each position:
+//   - Letter in correct position → green (exact match).
+//   - Letter in targetWord but wrong position → yellow (count "used" occurrences: exact matches and earlier yellows consume that letter in target; one yellow per remaining occurrence).
+//   - Letter not in targetWord (or no remaining occurrence) → red.
+//   Apply colors to the row divs. Then:
+//   - Exact match → win: show visual + text "You win", stop listeners.
+//   - Else if currentRowIndex was last row → lose: show visual + text "You lose", reveal targetWord, stop listeners.
+//   - Else advance currentRowIndex to next row.
+
+class WordGuessingGame {
+  constructor(options = {}) {
+    const opts = this._parseOptions(options);
+    this.numberOfTries = opts.numberOfTries;
+    this.numberOfLetters = opts.numberOfLetters;
+    this.containerId = opts.containerId;
+  }
+
+  async start() {
+    if (this._boundKeyHandler) {
+      document.removeEventListener('keydown', this._boundKeyHandler);
+    }
+    this._ended = false;
+    this.targetWord = await this._pickTargetWord(this.numberOfLetters);
+    this.currentRowIndex = 0;
+    this.currentColumnIndex = 0;
+
+    const container = this._getContainer(this.containerId);
+    const { grid, rows } = this._buildGrid(this.numberOfTries, this.numberOfLetters);
+    this.grid = grid;
+    this.rows = rows;
+    container.appendChild(grid);
+
+    const msgEl = document.createElement('div');
+    msgEl.id = this.containerId + '-msg';
+    msgEl.style.marginTop = '8px';
+    msgEl.style.minHeight = '1.4em';
+    msgEl.style.fontSize = '0.9rem';
+    msgEl.style.color = '#c62828';
+    container.appendChild(msgEl);
+
+    const showAnswerWrap = document.createElement('div');
+    showAnswerWrap.style.marginTop = '10px';
+    showAnswerWrap.style.fontSize = '0.85rem';
+    const showBtn = document.createElement('button');
+    showBtn.textContent = 'Show answer';
+    showBtn.style.padding = '4px 10px';
+    showBtn.style.fontSize = '0.8rem';
+    showBtn.style.cursor = 'pointer';
+    showBtn.style.borderRadius = '4px';
+    showBtn.style.border = '1px solid #d3d6da';
+    showBtn.style.background = '#f5f5f5';
+    const answerSpan = document.createElement('span');
+    answerSpan.style.marginLeft = '8px';
+    answerSpan.style.fontWeight = 'bold';
+    showBtn.addEventListener('click', () => {
+      answerSpan.textContent = this.targetWord.charAt(0).toUpperCase() + this.targetWord.slice(1);
+    });
+    showAnswerWrap.appendChild(showBtn);
+    showAnswerWrap.appendChild(answerSpan);
+    container.appendChild(showAnswerWrap);
+
+    this._attachListeners();
+  }
+
+  _attachListeners() {
+    this._boundKeyHandler = this._onKeyDown.bind(this);
+    document.addEventListener('keydown', this._boundKeyHandler);
+  }
+
+  _onKeyDown(e) {
+    // allow refresh/reload page
+    if ((e.ctrlKey || e.metaKey) && e.key === 'r') return;
+    if (e.key === 'F5') return;
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      if (this.numberOfLetters < 7) {
+        this.numberOfLetters++;
+        this.start();
+      }
+      return;
+    }
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      if (this.numberOfLetters > 3) {
+        this.numberOfLetters--;
+        this.start();
+      }
+      return;
+    }
+    if (this._ended) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.start();
+      }
+      return;
+    }
+    const row = this.rows[this.currentRowIndex];
+    if (!row) return;
+
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      if (this.currentColumnIndex > 0) {
+        this.currentColumnIndex--;
+        row[this.currentColumnIndex].textContent = '';
+      }
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      this._submitRow();
+      return;
+    }
+
+    this._clearMessage();
+
+    if (e.key.length === 1 && /^[a-zA-Z]$/.test(e.key)) {
+      e.preventDefault();
+      if (this.currentColumnIndex < this.numberOfLetters) {
+        row[this.currentColumnIndex].textContent = this.currentColumnIndex === 0 ? e.key.toUpperCase() : e.key.toLowerCase();
+        this.currentColumnIndex++;
+      }
+    }
+  }
+
+  async _submitRow() {
+    if (this.currentColumnIndex !== this.numberOfLetters) {
+      this._flashEmptyCells();
+      return;
+    }
+    const row = this.rows[this.currentRowIndex];
+    const guess = row.map(cell => cell.textContent).join('').toLowerCase();
+    const valid = await this._isValidWord(guess);
+    if (!valid) {
+      this._showMessage('Not a valid word');
+      return;
+    }
+    this._clearMessage();
+    const feedback = this._computeFeedback(guess);
+    this._applyRowFeedback(row, feedback);
+
+    if (guess === this.targetWord) {
+      this._endGame(true);
+      return;
+    }
+    if (this.numberOfTries === this.currentRowIndex + 2) {
+      this.numberOfTries++;
+      const newRowIndex = this.rows.length;
+      const cells = [];
+      for (let c = 0; c < this.numberOfLetters; c++) {
+        const cell = this._createCell(newRowIndex, c);
+        cells.push(cell);
+        this.grid.appendChild(cell);
+      }
+      this.rows.push(cells);
+      cells[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    this.currentRowIndex++;
+    this.currentColumnIndex = 0;
+  }
+
+  _messageEl() {
+    return document.getElementById(this.containerId + '-msg');
+  }
+
+  _showMessage(text) {
+    this._messageEl().textContent = text;
+  }
+
+  _clearMessage() {
+    const el = document.getElementById(this.containerId + '-msg');
+    if (el) el.textContent = '';
+  }
+
+  _flashEmptyCells() {
+    const row = this.rows[this.currentRowIndex];
+    for (let c = this.currentColumnIndex; c < this.numberOfLetters; c++) {
+      const cell = row[c];
+      cell.style.backgroundColor = '#f8b4b4';
+      setTimeout(() => {
+        cell.style.backgroundColor = '';
+      }, 200);
+    }
+  }
+
+  _computeFeedback(guess) {
+    const target = this.targetWord;
+    const n = target.length;
+    const result = Array(n).fill(null);
+
+    for (let i = 0; i < n; i++) {
+      if (guess[i] === target[i]) {
+        result[i] = 'green';
+      } else if (target.includes(guess[i])) {
+        result[i] = 'yellow';
+      } else {
+        result[i] = 'red';
+      }
+    }
+    return result;
+  }
+
+  _applyRowFeedback(row, feedback) {
+    const colors = { green: '#6aaa64', yellow: '#c9b458', red: '#787c7e' };
+    row.forEach((cell, i) => {
+      cell.style.backgroundColor = colors[feedback[i]];
+      cell.style.borderColor = colors[feedback[i]];
+      cell.style.color = '#fff';
+    });
+  }
+
+  _endGame(won) {
+    this._ended = true;
+    if (!won) document.removeEventListener('keydown', this._boundKeyHandler);
+    const container = document.getElementById(this.containerId);
+    const msg = document.createElement('div');
+    msg.style.marginTop = '12px';
+    msg.style.fontWeight = 'bold';
+    msg.style.fontSize = '1.25rem';
+    msg.textContent = won ? 'You win!' : `You lose. The word was: ${this.targetWord}`;
+    container.appendChild(msg);
+    if (won) {
+      const again = document.createElement('div');
+      again.style.marginTop = '8px';
+      again.style.fontWeight = 'normal';
+      again.style.fontSize = '0.95rem';
+      again.textContent = 'Press Enter to play again.';
+      container.appendChild(again);
+    }
+  }
+
+  _parseOptions(options) {
+    const containerId = options.containerId || 'wordle';
+    if (!containerId) throw new Error('WordGuessingGame: containerId is required');
+    const numberOfLetters = options.numberOfLetters || 4;
+    const list = WORD_LISTS[numberOfLetters];
+    if (!list || !list.length) throw new Error('WordGuessingGame: no word list for length ' + numberOfLetters);
+    return {
+      numberOfTries: options.numberOfTries || 6,
+      numberOfLetters,
+      containerId
+    };
+  }
+
+  async _pickTargetWord(numberOfLetters) {
+    try {
+      const res = await fetch(`https://random-word-api.herokuapp.com/word?length=${numberOfLetters}`);
+      if (res.ok) {
+        const words = await res.json();
+        if (Array.isArray(words) && words.length > 0 && String(words[0]).length === numberOfLetters) {
+          return String(words[0]).toLowerCase();
+        }
+      }
+    } catch (_) { /* fallback */ }
+    const list = WORD_LISTS[numberOfLetters];
+    return list[Math.floor(Math.random() * list.length)].toLowerCase();
+  }
+
+  async _isValidWord(word) {
+    try {
+      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+      return res.ok;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  _getContainer(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) throw new Error('WordGuessingGame: container not found: ' + containerId);
+    container.innerHTML = '';
+    return container;
+  }
+
+  _createCell(row, col) {
+    const cell = document.createElement('div');
+    cell.setAttribute('data-row', row);
+    cell.setAttribute('data-col', col);
+    cell.style.border = '1px solid #d3d6da';
+    cell.style.backgroundColor = '#f5f5f5';
+    cell.style.aspectRatio = '1';
+    cell.style.display = 'flex';
+    cell.style.alignItems = 'center';
+    cell.style.justifyContent = 'center';
+    cell.style.fontSize = '1.5rem';
+    cell.style.fontWeight = 'bold';
+    return cell;
+  }
+
+  _buildGrid(numberOfTries, numberOfLetters) {
+    const grid = document.createElement('div');
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = `repeat(${numberOfLetters}, 1fr)`;
+    grid.style.gap = '4px';
+    grid.style.maxWidth = `${numberOfLetters * 52}px`;
+
+    const rows = [];
+    for (let r = 0; r < numberOfTries; r++) {
+      const cells = [];
+      for (let c = 0; c < numberOfLetters; c++) {
+        const cell = this._createCell(r, c);
+        cells.push(cell);
+        grid.appendChild(cell);
+      }
+      rows.push(cells);
+    }
+    return { grid, rows };
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const game = new WordGuessingGame({ containerId: 'wordle' });
+  game.start();
+});
+</script>
