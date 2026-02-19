@@ -268,15 +268,24 @@ class WordGuessingGame {
   }
 
   async _pickTargetWord(numberOfLetters) {
-    try {
-      const res = await fetch(`https://random-word-api.herokuapp.com/word?length=${numberOfLetters}`);
-      if (res.ok) {
-        const words = await res.json();
-        if (Array.isArray(words) && words.length > 0 && String(words[0]).length === numberOfLetters) {
-          return String(words[0]).toLowerCase();
-        }
-      }
-    } catch (_) { /* fallback */ }
+    // const timeoutMs = 3000;
+    // const controller = new AbortController();
+    // const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    // try {
+    //   const res = await fetch(`https://random-word-api.herokuapp.com/word?length=${numberOfLetters}`, {
+    //     signal: controller.signal
+    //   });
+    //   if (res.ok) {
+    //     const words = await res.json();
+    //     if (Array.isArray(words) && words.length > 0 && String(words[0]).length === numberOfLetters) {
+    //       clearTimeout(timeoutId);
+    //       return String(words[0]).toLowerCase();
+    //     }
+    //   }
+    // } catch (_) { /* fallback on timeout or network error */ }
+    // finally {
+    //   clearTimeout(timeoutId);
+    // }
     const list = WORD_LISTS[numberOfLetters];
     return list[Math.floor(Math.random() * list.length)].toLowerCase();
   }
