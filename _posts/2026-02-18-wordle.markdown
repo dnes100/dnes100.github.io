@@ -49,18 +49,19 @@ class WordGuessingGame {
     this.currentColumnIndex = 0;
 
     const container = this._getContainer(this.containerId);
-    const { grid, rows } = this._buildGrid(this.numberOfTries, this.numberOfLetters);
-    this.grid = grid;
-    this.rows = rows;
-    container.appendChild(grid);
 
     const msgEl = document.createElement('div');
     msgEl.id = this.containerId + '-msg';
-    msgEl.style.marginTop = '8px';
+    msgEl.style.marginBottom = '8px';
     msgEl.style.minHeight = '1.4em';
     msgEl.style.fontSize = '0.9rem';
     msgEl.style.color = '#c62828';
     container.appendChild(msgEl);
+
+    const { grid, rows } = this._buildGrid(this.numberOfTries, this.numberOfLetters);
+    this.grid = grid;
+    this.rows = rows;
+    container.appendChild(grid);
 
     const showAnswerWrap = document.createElement('div');
     showAnswerWrap.style.marginTop = '10px';
