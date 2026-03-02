@@ -14,17 +14,49 @@ categories: games
 
 <div id="racing-container">
   <canvas id="racing-canvas"></canvas>
+  <div id="racing-touch-controls" aria-label="Steer left and right">
+    <button type="button" class="racing-btn" id="racing-btn-left" aria-label="Steer left">←</button>
+    <button type="button" class="racing-btn" id="racing-btn-pause" aria-label="Pause">‖</button>
+    <button type="button" class="racing-btn" id="racing-btn-right" aria-label="Steer right">→</button>
+  </div>
 </div>
 
 <style>
-#racing-container { max-width: 100%; }
+#racing-container { max-width: 100%; touch-action: none; -webkit-user-select: none; user-select: none; }
 #racing-canvas {
   display: block;
   width: 100%;
   max-width: 300px;
   height: auto;
   margin: 0 auto;
+  touch-action: none;
 }
+#racing-touch-controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 12px;
+  max-width: 300px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.racing-btn {
+  min-height: 52px;
+  font-size: 24px;
+  font-weight: bold;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  background: #2d2d44;
+  color: #e0e0e0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background 0.1s ease;
+}
+.racing-btn.pressed { background: #3d3d5c; }
+.racing-btn:active { background: #3d3d5c; }
+#racing-touch-controls .racing-btn { flex: 1; }
+#racing-btn-pause { flex: 0 0 52px; }
 </style>
 
 <script>
@@ -47,8 +79,10 @@ class CarRacingGame {
     this.state = 'menu'; // 'menu' | 'playing' | 'paused' | 'gameover'
     this._boundKeydown = null;
     this._boundClick = null;
+    this._boundTouchStart = null;
     this._boundGameKeydown = null;
     this._boundGameKeyup = null;
+    this._touchHandlers = null;
     this.player = null; // { x } — no lane; position only
     this._keys = { left: false, right: false };
     this.opponents = [];  // { lane, y } — move down, remove when off bottom
@@ -275,6 +309,17 @@ class CarRacingGame {
     };
     document.addEventListener('keydown', this._boundGameKeydown);
     document.addEventListener('keyup', this._boundGameKeyup);
+
+    const btnPause = document.getElementById('racing-btn-pause');
+    if (btnPause) {
+      const onPause = (e) => {
+        if (e.cancelable) e.preventDefault();
+        if (this.state === 'playing') { this.state = 'paused'; this.draw(); }
+        else if (this.state === 'paused') { this.state = 'playing'; this._tick(); }
+      };
+      btnPause.addEventListener('click', onPause);
+      this._touchHandlers = { btnPause, onPause };
+    }
   }
 
   _unbindGameKeys() {
@@ -286,6 +331,45 @@ class CarRacingGame {
       document.removeEventListener('keyup', this._boundGameKeyup);
       this._boundGameKeyup = null;
     }
+    const t = this._touchHandlers;
+    if (t && t.btnPause) {
+      t.btnPause.removeEventListener('click', t.onPause);
+      this._touchHandlers = null;
+    }
+  }
+
+  _bindTouchControls() {
+    const btnLeft = document.getElementById('racing-btn-left');
+    const btnRight = document.getElementById('racing-btn-right');
+    if (!btnLeft || !btnRight) return;
+    const prevent = (e) => e.preventDefault();
+    const addPressedFeedback = (el) => {
+      if (!el) return;
+      const addP = () => el.classList.add('pressed');
+      const removeP = () => el.classList.remove('pressed');
+      el.addEventListener('touchstart', addP, { passive: true });
+      el.addEventListener('touchend', removeP); el.addEventListener('touchcancel', removeP);
+      el.addEventListener('mousedown', addP);
+      el.addEventListener('mouseup', removeP); el.addEventListener('mouseleave', removeP);
+    };
+    addPressedFeedback(btnLeft); addPressedFeedback(btnRight);
+    addPressedFeedback(document.getElementById('racing-btn-pause'));
+    const onLeftDown = (e) => {
+      prevent(e);
+      if (this.state === 'menu' || this.state === 'gameover') this._onStart();
+      else this._keys.left = true;
+    };
+    const onLeftUp = () => { this._keys.left = false; };
+    const onRightDown = (e) => {
+      prevent(e);
+      if (this.state === 'menu' || this.state === 'gameover') this._onStart();
+      else this._keys.right = true;
+    };
+    const onRightUp = () => { this._keys.right = false; };
+    btnLeft.addEventListener('touchstart', onLeftDown); btnLeft.addEventListener('touchend', onLeftUp); btnLeft.addEventListener('touchcancel', onLeftUp);
+    btnLeft.addEventListener('mousedown', onLeftDown); btnLeft.addEventListener('mouseup', onLeftUp); btnLeft.addEventListener('mouseleave', onLeftUp);
+    btnRight.addEventListener('touchstart', onRightDown); btnRight.addEventListener('touchend', onRightUp); btnRight.addEventListener('touchcancel', onRightUp);
+    btnRight.addEventListener('mousedown', onRightDown); btnRight.addEventListener('mouseup', onRightUp); btnRight.addEventListener('mouseleave', onRightUp);
   }
 
   _bindStartListener() {
@@ -294,8 +378,13 @@ class CarRacingGame {
       this._onStart();
     };
     this._boundClick = () => this._onStart();
+    this._boundTouchStart = (e) => {
+      e.preventDefault();
+      this._onStart();
+    };
     document.addEventListener('keydown', this._boundKeydown);
     this.canvas.addEventListener('click', this._boundClick);
+    this.canvas.addEventListener('touchstart', this._boundTouchStart, { passive: false });
   }
 
   _unbindStartListener() {
@@ -307,6 +396,10 @@ class CarRacingGame {
       this.canvas.removeEventListener('click', this._boundClick);
       this._boundClick = null;
     }
+    if (this._boundTouchStart) {
+      this.canvas.removeEventListener('touchstart', this._boundTouchStart);
+      this._boundTouchStart = null;
+    }
   }
 
   start() {
@@ -314,6 +407,7 @@ class CarRacingGame {
     this.state = 'menu';
     this.player = { x: this.width / 2 };
     this._bindStartListener();
+    this._bindTouchControls();
     this.draw();
   }
 
