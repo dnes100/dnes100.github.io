@@ -15,8 +15,13 @@ categories: games
   - <span style="color:#787c7e;font-weight:bold;"><span style="display:inline-block;width:14px;height:14px;background:#787c7e;margin-right:6px;vertical-align:middle;border-radius:2px;"></span>Gray</span> — letter is not in the word.
 </div>
 
-<div id="wordle">
+<div id="wordle-container">
   <div id="wordle-msg" style="margin-bottom:8px;min-height:1.4em;font-size:0.9rem;color:#c62828;"></div>
+  <div id="wordle"></div>
+  <div id="wordle-show" style="margin-top:10px;font-size:0.85rem;">
+    <button type="button" id="wordle-show-btn" style="padding:4px 10px;font-size:0.8rem;cursor:pointer;border-radius:4px;border:1px solid #d3d6da;background:#f5f5f5;">Show answer</button>
+    <span id="wordle-answer" style="margin-left:8px;font-weight:bold;"></span>
+  </div>
 </div>
 
 <script>
@@ -50,7 +55,7 @@ class WordGuessingGame {
     this.grid = grid;
     this.rows = rows;
     container.appendChild(grid);
-    container.appendChild(this._createShowAnswerSection());
+    this._bindShowAnswerSection();
 
     this._attachListeners();
   }
@@ -61,30 +66,14 @@ class WordGuessingGame {
     }
   }
 
-  _createShowAnswerSection() {
-    const wrap = document.createElement('div');
-    Object.assign(wrap.style, { marginTop: '10px', fontSize: '0.85rem' });
-
-    const btn = document.createElement('button');
-    btn.textContent = 'Show answer';
-    Object.assign(btn.style, {
-      padding: '4px 10px',
-      fontSize: '0.8rem',
-      cursor: 'pointer',
-      borderRadius: '4px',
-      border: '1px solid #d3d6da',
-      background: '#f5f5f5'
-    });
-
-    const answerSpan = document.createElement('span');
-    Object.assign(answerSpan.style, { marginLeft: '8px', fontWeight: 'bold' });
-    btn.addEventListener('click', () => {
+  _bindShowAnswerSection() {
+    const btn = document.getElementById(this.containerId + '-show-btn');
+    const answerSpan = document.getElementById(this.containerId + '-answer');
+    if (!btn || !answerSpan) return;
+    answerSpan.textContent = '';
+    btn.onclick = () => {
       answerSpan.textContent = this.targetWord.charAt(0).toUpperCase() + this.targetWord.slice(1);
-    });
-
-    wrap.appendChild(btn);
-    wrap.appendChild(answerSpan);
-    return wrap;
+    };
   }
 
   _attachListeners() {
@@ -94,7 +83,7 @@ class WordGuessingGame {
 
   _onKeyDown(e) {
     // allow refresh/reload page
-    if ((e.ctrlKey || e.metaKey) && e.key === 'r') return;
+    if ((e.ctrlKey || e.metaKey)) return;
     if (e.key === 'F5') return;
     if (e.key === 'ArrowRight') {
       e.preventDefault();
@@ -367,9 +356,7 @@ class WordGuessingGame {
   _getContainer(containerId) {
     const container = document.getElementById(containerId);
     if (!container) throw new Error('WordGuessingGame: container not found: ' + containerId);
-    const msgEl = document.getElementById(containerId + '-msg');
     container.innerHTML = '';
-    if (msgEl) container.appendChild(msgEl);
     return container;
   }
 
