@@ -32,7 +32,9 @@ class CarRacingGame {
   static WIDTH = 300;
   static HEIGHT = 480;
   static LANES = 3;
-  static PLAYER_SPEED = 5000; // pixels per second when holding left/right
+  static PLAYER_SPEED = 500; // pixels per second when holding left/right
+  static BASE_SPEED = 120;   // road/opponent speed (pixels per second), increases over time
+  static SPAWN_INTERVAL = 2; // seconds between opponent spawns
 
   constructor(options = {}) {
     const canvasId = options.canvasId || 'racing-canvas';
@@ -49,6 +51,9 @@ class CarRacingGame {
     this._boundGameKeyup = null;
     this.player = null; // { x } — no lane; position only
     this._keys = { left: false, right: false };
+    this.opponents = [];  // { lane, y } — move down, remove when off bottom
+    this.gameSpeed = CarRacingGame.BASE_SPEED;
+    this._spawnAccum = 0;
   }
 
   _laneCenter(lane) {
@@ -93,6 +98,17 @@ class CarRacingGame {
     if (this._keys.left) this.player.x -= CarRacingGame.PLAYER_SPEED * dt;
     if (this._keys.right) this.player.x += CarRacingGame.PLAYER_SPEED * dt;
     this.player.x = Math.max(min, Math.min(max, this.player.x));
+
+    if (this.state !== 'playing') return;
+    this.opponents.forEach((o) => { o.y += this.gameSpeed * dt; });
+    this.opponents = this.opponents.filter((o) => o.y < this.height + 80);
+
+    this._spawnAccum += dt;
+    if (this._spawnAccum >= CarRacingGame.SPAWN_INTERVAL) {
+      this._spawnAccum = 0;
+      const lane = Math.floor(Math.random() * CarRacingGame.LANES);
+      this.opponents.push({ lane, y: -80 });
+    }
   }
 
   drawPlayer() {
@@ -126,9 +142,30 @@ class CarRacingGame {
     this.ctx.fill();
   }
 
+  drawOpponent(o) {
+    const w = this.laneWidth * 0.55;
+    const h = 80;
+    const cx = this._laneCenter(o.lane);
+    const y = o.y;
+    const backW = w * 0.72;
+    const frontW = w;
+    this.ctx.fillStyle = '#f87171';
+    this.ctx.beginPath();
+    this.ctx.moveTo(cx - frontW / 2, y + h);
+    this.ctx.lineTo(cx + frontW / 2, y + h);
+    this.ctx.lineTo(cx + backW / 2, y);
+    this.ctx.lineTo(cx - backW / 2, y);
+    this.ctx.closePath();
+    this.ctx.fill();
+    this.ctx.strokeStyle = '#dc2626';
+    this.ctx.lineWidth = 2;
+    this.ctx.stroke();
+  }
+
   draw() {
     this.drawBackground();
     this.drawLanes();
+    this.opponents.forEach((o) => this.drawOpponent(o));
     if (this.player) {
       this.drawPlayer();
     }
@@ -157,8 +194,8 @@ class CarRacingGame {
     if (this.state === 'playing') this.update(dt);
     this.draw();
     if (this.state === 'playing') {
-      // requestAnimationFrame syncs with display refresh (e.g. 60fps) and pauses when tab is hidden
-      this._animationId = requestAnimationFrame((t) => this._tick(t));
+      // Pass this frame's start time so next frame can compute dt correctly (rAF callback receives current frame time, not previous)
+      this._animationId = requestAnimationFrame(() => this._tick(now));
     }
   }
 
@@ -168,6 +205,9 @@ class CarRacingGame {
     this.player.x = this.width / 2;
     this._keys.left = false;
     this._keys.right = false;
+    this.opponents = [];
+    this.gameSpeed = CarRacingGame.BASE_SPEED;
+    this._spawnAccum = 0;
     this._unbindStartListener();
     this._bindGameKeys();
     this._tick();
