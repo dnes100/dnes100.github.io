@@ -83,6 +83,7 @@ class CarRacingGame {
   static GEAR_MAX = 5;
   static SPEED_PER_GEAR = 24; // gameSpeed = BASE_SPEED + gear * SPEED_PER_GEAR
   static SPAWN_INTERVAL = 2; // seconds between opponent spawns
+  static DT_MAX = 0.1;       // cap dt when tab was in background
 
   constructor(options = {}) {
     const canvasId = options.canvasId || 'racing-canvas';
@@ -91,6 +92,10 @@ class CarRacingGame {
     this.width = CarRacingGame.WIDTH;
     this.height = CarRacingGame.HEIGHT;
     this.laneWidth = this.width / CarRacingGame.LANES;
+    this._carW = this.laneWidth * 0.55;
+    this._carH = 80;
+    this._laneCanvas = null; // offscreen canvas for lanes, drawn once
+    this._gearDisplayEl = null;
     this._animationId = null;
     this.state = 'menu'; // 'menu' | 'playing' | 'paused' | 'gameover'
     this._boundKeydown = null;
@@ -110,8 +115,8 @@ class CarRacingGame {
   _applyGear() {
     this.gear = Math.max(0, Math.min(CarRacingGame.GEAR_MAX, this.gear));
     this.gameSpeed = CarRacingGame.BASE_SPEED + this.gear * CarRacingGame.SPEED_PER_GEAR;
-    const el = document.getElementById('racing-gear-display');
-    if (el) el.textContent = this.gear;
+    if (!this._gearDisplayEl) this._gearDisplayEl = document.getElementById('racing-gear-display');
+    if (this._gearDisplayEl) this._gearDisplayEl.textContent = this.gear;
   }
 
   _laneCenter(lane) {
@@ -119,7 +124,7 @@ class CarRacingGame {
   }
 
   _playerXBounds() {
-    const halfCar = (this.laneWidth * 0.55) / 2;
+    const halfCar = this._carW / 2;
     return { min: halfCar, max: this.width - halfCar };
   }
 
@@ -129,11 +134,11 @@ class CarRacingGame {
 
   _checkCollisions() {
     const playerLane = this._playerLane();
-    const playerTop = this.height - 80 - 24;
+    const playerTop = this.height - this._carH - 24;
     const playerBottom = this.height - 24;
     for (const o of this.opponents) {
       if (o.lane !== playerLane) continue;
-      const oBottom = o.y + 80;
+      const oBottom = o.y + this._carH;
       if (playerBottom >= o.y && playerTop <= oBottom) {
         this.state = 'gameover';
         this._bindStartListener();
@@ -143,10 +148,29 @@ class CarRacingGame {
     }
   }
 
+  _drawLanesToBuffer() {
+    if (!this.ctx || this._laneCanvas) return;
+    this._laneCanvas = document.createElement('canvas');
+    this._laneCanvas.width = this.width;
+    this._laneCanvas.height = this.height;
+    const ctx = this._laneCanvas.getContext('2d');
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([12, 12]);
+    for (let i = 1; i < CarRacingGame.LANES; i++) {
+      const x = i * this.laneWidth;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, this.height);
+      ctx.stroke();
+    }
+  }
+
   init() {
     if (!this.canvas || !this.ctx) return false;
     this.canvas.width = this.width;
     this.canvas.height = this.height;
+    this._drawLanesToBuffer();
     return true;
   }
 
@@ -157,6 +181,10 @@ class CarRacingGame {
   }
 
   drawLanes() {
+    if (this._laneCanvas) {
+      this.ctx.drawImage(this._laneCanvas, 0, 0);
+      return;
+    }
     this.ctx.strokeStyle = '#e0e0e0';
     this.ctx.lineWidth = 2;
     this.ctx.setLineDash([12, 12]);
@@ -172,33 +200,35 @@ class CarRacingGame {
 
   update(dt) {
     if (!this.player) return;
+    const cappedDt = Math.min(dt, CarRacingGame.DT_MAX);
     const { min, max } = this._playerXBounds();
-    if (this._keys.left) this.player.x -= CarRacingGame.PLAYER_SPEED * dt;
-    if (this._keys.right) this.player.x += CarRacingGame.PLAYER_SPEED * dt;
+    if (this._keys.left) this.player.x -= CarRacingGame.PLAYER_SPEED * cappedDt;
+    if (this._keys.right) this.player.x += CarRacingGame.PLAYER_SPEED * cappedDt;
     this.player.x = Math.max(min, Math.min(max, this.player.x));
 
     if (this.state !== 'playing') return;
-    this.opponents.forEach((o) => { o.y += this.gameSpeed * dt; });
-    this.opponents = this.opponents.filter((o) => o.y < this.height + 80);
+    this.opponents.forEach((o) => { o.y += this.gameSpeed * cappedDt; });
+    for (let i = this.opponents.length - 1; i >= 0; i--) {
+      if (this.opponents[i].y >= this.height + this._carH) this.opponents.splice(i, 1);
+    }
 
     this._checkCollisions();
     if (this.state === 'gameover') return;
 
-    this._spawnAccum += dt;
+    this._spawnAccum += cappedDt;
     if (this._spawnAccum >= CarRacingGame.SPAWN_INTERVAL) {
       this._spawnAccum = 0;
       const lane = Math.floor(Math.random() * CarRacingGame.LANES);
-      this.opponents.push({ lane, y: -80 });
+      this.opponents.push({ lane, y: -this._carH });
     }
   }
 
   drawPlayer() {
     if (!this.player) return;
-    const w = this.laneWidth * 0.55;
-    const h = 80;
+    const w = this._carW;
+    const h = this._carH;
     const y = this.height - h - 24;
     const cx = this.player.x;
-    // Top-down car: wider rear, narrower front (nose points up)
     const backW = w;
     const frontW = w * 0.72;
     this.ctx.fillStyle = '#4ade80';
@@ -224,8 +254,8 @@ class CarRacingGame {
   }
 
   drawOpponent(o) {
-    const w = this.laneWidth * 0.55;
-    const h = 80;
+    const w = this._carW;
+    const h = this._carH;
     const cx = this._laneCenter(o.lane);
     const y = o.y;
     const backW = w * 0.72;
@@ -280,9 +310,8 @@ class CarRacingGame {
   }
 
   _tick(prevTime = 0) {
-    // performance.now() is monotonic (unaffected by clock changes) and high-resolution for stable dt
     const now = performance.now();
-    const dt = prevTime ? (now - prevTime) / 1000 : 0;
+    const dt = prevTime ? Math.min((now - prevTime) / 1000, CarRacingGame.DT_MAX) : 0;
     if (this.state === 'playing') this.update(dt);
     this.draw();
     if (this.state === 'playing') {
