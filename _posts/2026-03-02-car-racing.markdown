@@ -81,8 +81,10 @@ class CarRacingGame {
   static PLAYER_SPEED = 500; // pixels per second when holding left/right
   static BASE_SPEED = 120;   // road/opponent speed at gear 0
   static GEAR_MAX = 5;
-  static SPEED_PER_GEAR = 24; // gameSpeed = BASE_SPEED + gear * SPEED_PER_GEAR
-  static SPAWN_INTERVAL = 2; // seconds between opponent spawns
+  static SPEED_PER_GEAR = 40; // gameSpeed = BASE_SPEED + gear * SPEED_PER_GEAR
+  static SPAWN_INTERVAL_BASE = 2;   // seconds between spawns at gear 0
+  static SPAWN_INTERVAL_MIN = 0.25; // minimum seconds between spawns at high gear
+  static MIN_SPAWN_GAP = 100;       // min pixels between new spawn (y=0) and topmost opponent — safe lane change
   static DT_MAX = 0.1;       // cap dt when tab was in background
 
   constructor(options = {}) {
@@ -215,11 +217,17 @@ class CarRacingGame {
     this._checkCollisions();
     if (this.state === 'gameover') return;
 
+    const spawnInterval = Math.max(CarRacingGame.SPAWN_INTERVAL_MIN,
+      CarRacingGame.SPAWN_INTERVAL_BASE - (CarRacingGame.SPAWN_INTERVAL_BASE - CarRacingGame.SPAWN_INTERVAL_MIN) * this.gear / CarRacingGame.GEAR_MAX);
     this._spawnAccum += cappedDt;
-    if (this._spawnAccum >= CarRacingGame.SPAWN_INTERVAL) {
-      this._spawnAccum = 0;
-      const lane = Math.floor(Math.random() * CarRacingGame.LANES);
-      this.opponents.push({ lane, y: -this._carH });
+    if (this._spawnAccum >= spawnInterval) {
+      const topmostY = this.opponents.length ? Math.min(...this.opponents.map((o) => o.y)) : Infinity;
+      const gapOk = this.opponents.length === 0 || topmostY >= CarRacingGame.MIN_SPAWN_GAP;
+      if (gapOk) {
+        this._spawnAccum -= spawnInterval;
+        const lane = Math.floor(Math.random() * CarRacingGame.LANES);
+        this.opponents.push({ lane, y: -this._carH });
+      }
     }
   }
 
