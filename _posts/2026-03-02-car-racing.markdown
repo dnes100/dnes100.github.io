@@ -32,6 +32,7 @@ class CarRacingGame {
   static WIDTH = 300;
   static HEIGHT = 480;
   static LANES = 3;
+  static PLAYER_SPEED = 5000; // pixels per second when holding left/right
 
   constructor(options = {}) {
     const canvasId = options.canvasId || 'racing-canvas';
@@ -45,6 +46,18 @@ class CarRacingGame {
     this._boundKeydown = null;
     this._boundClick = null;
     this._boundGameKeydown = null;
+    this._boundGameKeyup = null;
+    this.player = null; // { x } — no lane; position only
+    this._keys = { left: false, right: false };
+  }
+
+  _laneCenter(lane) {
+    return (lane + 0.5) * this.laneWidth;
+  }
+
+  _playerXBounds() {
+    const halfCar = (this.laneWidth * 0.55) / 2;
+    return { min: halfCar, max: this.width - halfCar };
   }
 
   init() {
@@ -74,13 +87,51 @@ class CarRacingGame {
     this.ctx.setLineDash([]);
   }
 
-  update(_dt) {
-    // Game state updates (player, opponents, etc.) go here
+  update(dt) {
+    if (!this.player) return;
+    const { min, max } = this._playerXBounds();
+    if (this._keys.left) this.player.x -= CarRacingGame.PLAYER_SPEED * dt;
+    if (this._keys.right) this.player.x += CarRacingGame.PLAYER_SPEED * dt;
+    this.player.x = Math.max(min, Math.min(max, this.player.x));
+  }
+
+  drawPlayer() {
+    if (!this.player) return;
+    const w = this.laneWidth * 0.55;
+    const h = 80;
+    const y = this.height - h - 24;
+    const cx = this.player.x;
+    // Top-down car: wider rear, narrower front (nose points up)
+    const backW = w;
+    const frontW = w * 0.72;
+    this.ctx.fillStyle = '#4ade80';
+    this.ctx.beginPath();
+    this.ctx.moveTo(cx - backW / 2, y + h);
+    this.ctx.lineTo(cx + backW / 2, y + h);
+    this.ctx.lineTo(cx + frontW / 2, y);
+    this.ctx.lineTo(cx - frontW / 2, y);
+    this.ctx.closePath();
+    this.ctx.fill();
+    this.ctx.strokeStyle = '#22c55e';
+    this.ctx.lineWidth = 2;
+    this.ctx.stroke();
+    // Cabin (windshield) hint
+    this.ctx.fillStyle = 'rgba(34, 197, 94, 0.5)';
+    this.ctx.beginPath();
+    this.ctx.moveTo(cx - frontW / 2 + 6, y + 18);
+    this.ctx.lineTo(cx + frontW / 2 - 6, y + 18);
+    this.ctx.lineTo(cx + frontW / 4, y + 6);
+    this.ctx.lineTo(cx - frontW / 4, y + 6);
+    this.ctx.closePath();
+    this.ctx.fill();
   }
 
   draw() {
     this.drawBackground();
     this.drawLanes();
+    if (this.player) {
+      this.drawPlayer();
+    }
     if (this.state === 'menu') {
       this.ctx.fillStyle = '#fff';
       this.ctx.font = '18px sans-serif';
@@ -114,6 +165,9 @@ class CarRacingGame {
   _onStart() {
     if (this.state !== 'menu') return;
     this.state = 'playing';
+    this.player.x = this.width / 2;
+    this._keys.left = false;
+    this._keys.right = false;
     this._unbindStartListener();
     this._bindGameKeys();
     this._tick();
@@ -131,14 +185,32 @@ class CarRacingGame {
           this._tick();
         }
       }
+      if (this.state !== 'playing' && this.state !== 'paused') return;
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+        e.preventDefault();
+        this._keys.left = true;
+      }
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+        e.preventDefault();
+        this._keys.right = true;
+      }
+    };
+    this._boundGameKeyup = (e) => {
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') this._keys.left = false;
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') this._keys.right = false;
     };
     document.addEventListener('keydown', this._boundGameKeydown);
+    document.addEventListener('keyup', this._boundGameKeyup);
   }
 
   _unbindGameKeys() {
     if (this._boundGameKeydown) {
       document.removeEventListener('keydown', this._boundGameKeydown);
       this._boundGameKeydown = null;
+    }
+    if (this._boundGameKeyup) {
+      document.removeEventListener('keyup', this._boundGameKeyup);
+      this._boundGameKeyup = null;
     }
   }
 
@@ -166,6 +238,7 @@ class CarRacingGame {
   start() {
     if (!this.init()) return;
     this.state = 'menu';
+    this.player = { x: this.width / 2 };
     this._bindStartListener();
     this.draw();
   }
