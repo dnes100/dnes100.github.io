@@ -65,6 +65,26 @@ class CarRacingGame {
     return { min: halfCar, max: this.width - halfCar };
   }
 
+  _playerLane() {
+    return Math.min(CarRacingGame.LANES - 1, Math.max(0, Math.floor(this.player.x / this.laneWidth)));
+  }
+
+  _checkCollisions() {
+    const playerLane = this._playerLane();
+    const playerTop = this.height - 80 - 24;
+    const playerBottom = this.height - 24;
+    for (const o of this.opponents) {
+      if (o.lane !== playerLane) continue;
+      const oBottom = o.y + 80;
+      if (playerBottom >= o.y && playerTop <= oBottom) {
+        this.state = 'gameover';
+        this._bindStartListener();
+        this.draw();
+        return;
+      }
+    }
+  }
+
   init() {
     if (!this.canvas || !this.ctx) return false;
     this.canvas.width = this.width;
@@ -102,6 +122,9 @@ class CarRacingGame {
     if (this.state !== 'playing') return;
     this.opponents.forEach((o) => { o.y += this.gameSpeed * dt; });
     this.opponents = this.opponents.filter((o) => o.y < this.height + 80);
+
+    this._checkCollisions();
+    if (this.state === 'gameover') return;
 
     this._spawnAccum += dt;
     if (this._spawnAccum >= CarRacingGame.SPAWN_INTERVAL) {
@@ -185,6 +208,17 @@ class CarRacingGame {
       this.ctx.font = '14px sans-serif';
       this.ctx.fillText('Press Space to resume', this.width / 2, this.height / 2 + 16);
     }
+    if (this.state === 'gameover') {
+      this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      this.ctx.fillRect(0, 0, this.width, this.height);
+      this.ctx.fillStyle = '#f87171';
+      this.ctx.font = '24px sans-serif';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText('Crash!', this.width / 2, this.height / 2 - 20);
+      this.ctx.fillStyle = '#fff';
+      this.ctx.font = '14px sans-serif';
+      this.ctx.fillText('Press any key or tap to play again', this.width / 2, this.height / 2 + 16);
+    }
   }
 
   _tick(prevTime = 0) {
@@ -200,7 +234,7 @@ class CarRacingGame {
   }
 
   _onStart() {
-    if (this.state !== 'menu') return;
+    if (this.state !== 'menu' && this.state !== 'gameover') return;
     this.state = 'playing';
     this.player.x = this.width / 2;
     this._keys.left = false;
