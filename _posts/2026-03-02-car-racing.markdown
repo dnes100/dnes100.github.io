@@ -86,6 +86,11 @@ class CarRacingGame {
   static SPAWN_INTERVAL_MIN = 0.25; // minimum seconds between spawns at high gear
   static MIN_SPAWN_GAP = 100;       // min pixels between new spawn (y=0) and topmost opponent — safe lane change
   static DT_MAX = 0.1;       // cap dt when tab was in background
+  static CRASH_DURATION = 0.45;
+  static PIXELS_PER_KM = 10000;
+  static SPEED_KMH_AT_GEAR_0 = 15;
+  static SPEED_KMH_AT_GEAR_MAX = 100;
+  static _gameSpeedMax() { return CarRacingGame.BASE_SPEED + (CarRacingGame.GEAR_MAX - 1) * CarRacingGame.SPEED_PER_GEAR; }
 
   constructor(options = {}) {
     const canvasId = options.canvasId || 'racing-canvas';
@@ -99,7 +104,10 @@ class CarRacingGame {
     this._laneCanvas = null; // offscreen canvas for lanes, drawn once
     this._gearDisplayEl = null;
     this._animationId = null;
-    this.state = 'menu'; // 'menu' | 'playing' | 'paused' | 'gameover'
+    this.state = 'menu'; // 'menu' | 'playing' | 'paused' | 'crashing' | 'gameover'
+    this._crashStartTime = null;
+    this._crashOpponent = null;
+    this._crashPieces = null;
     this._boundKeydown = null;
     this._boundClick = null;
     this._boundTouchStart = null;
@@ -112,13 +120,40 @@ class CarRacingGame {
     this.gear = 0;       // 0–5, controls gameSpeed
     this.gameSpeed = CarRacingGame.BASE_SPEED;
     this._spawnAccum = 0;
+    this._distancePixels = 0;
   }
 
   _applyGear() {
     this.gear = Math.max(0, Math.min(CarRacingGame.GEAR_MAX, this.gear));
-    this.gameSpeed = CarRacingGame.BASE_SPEED + this.gear * CarRacingGame.SPEED_PER_GEAR;
+    this.gameSpeed = this.gear === 0 ? 0 : CarRacingGame.BASE_SPEED + (this.gear - 1) * CarRacingGame.SPEED_PER_GEAR;
     if (!this._gearDisplayEl) this._gearDisplayEl = document.getElementById('racing-gear-display');
     if (this._gearDisplayEl) this._gearDisplayEl.textContent = this.gear;
+  }
+
+  _getSpeedAndDistanceKm() {
+    const distanceKm = this._distancePixels / CarRacingGame.PIXELS_PER_KM;
+    if (this.gear === 0) return { speedKmh: 0, distanceKm };
+    const gMin = CarRacingGame.BASE_SPEED;
+    const gMax = CarRacingGame._gameSpeedMax();
+    const kmhMin = CarRacingGame.SPEED_KMH_AT_GEAR_0;
+    const kmhMax = CarRacingGame.SPEED_KMH_AT_GEAR_MAX;
+    const speedKmh = kmhMin + (this.gameSpeed - gMin) / (gMax - gMin) * (kmhMax - kmhMin);
+    return { speedKmh, distanceKm };
+  }
+
+  _drawTopHud() {
+    const { speedKmh, distanceKm } = this._getSpeedAndDistanceKm();
+    const pad = 10;
+    const lineH = 18;
+    this.ctx.save();
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    this.ctx.fillRect(0, 0, this.width, lineH + pad * 2);
+    this.ctx.fillStyle = '#e0e0e0';
+    this.ctx.font = 'bold 14px sans-serif';
+    this.ctx.textAlign = 'left';
+    this.ctx.textBaseline = 'top';
+    this.ctx.fillText(`${Math.round(speedKmh)} km/h  |  ${distanceKm.toFixed(2)} km`, pad, pad);
+    this.ctx.restore();
   }
 
   _laneCenter(lane) {
@@ -134,6 +169,33 @@ class CarRacingGame {
     return Math.min(CarRacingGame.LANES - 1, Math.max(0, Math.floor(this.player.x / this.laneWidth)));
   }
 
+  _createCrashPieces() {
+    const o = this._crashOpponent;
+    if (!this.player || !o) return;
+    const cx = this._laneCenter(o.lane);
+    const playerTop = this.height - this._carH - 24;
+    const cy = (playerTop + o.y + this._carH) / 2;
+    const pieces = [];
+    const colors = ['#eab308', '#e09900', '#f87171', '#ea580c', '#1a1a2e'];
+    for (let i = 0; i < 14; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = this._carW * (0.3 + Math.random() * 0.8);
+      const speed = 80 + Math.random() * 120;
+      pieces.push({
+        x: cx + Math.cos(angle) * dist,
+        y: cy + Math.sin(angle) * dist,
+        w: 6 + Math.random() * 14,
+        h: 4 + Math.random() * 10,
+        rotation: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 8,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed
+      });
+    }
+    this._crashPieces = pieces;
+  }
+
   _checkCollisions() {
     const playerLane = this._playerLane();
     const playerTop = this.height - this._carH - 24;
@@ -142,9 +204,10 @@ class CarRacingGame {
       if (o.lane !== playerLane) continue;
       const oBottom = o.y + this._carH;
       if (playerBottom >= o.y && playerTop <= oBottom) {
-        this.state = 'gameover';
-        this._bindStartListener();
-        this.draw();
+        this.state = 'crashing';
+        this._crashStartTime = performance.now();
+        this._crashOpponent = o;
+        this._createCrashPieces();
         return;
       }
     }
@@ -200,6 +263,39 @@ class CarRacingGame {
     this.ctx.setLineDash([]);
   }
 
+  _drawHeadlightCone(cx, baseY) {
+    const coneLength = this._carH * 2;
+    const topY = Math.max(0, baseY - coneLength);
+    const baseHalfW = this._carW * 0.42;
+    const topHalfW = this._carW * 1.1;
+    this.ctx.beginPath();
+    this.ctx.moveTo(cx - baseHalfW, baseY);
+    this.ctx.lineTo(cx + baseHalfW, baseY);
+    this.ctx.lineTo(cx + topHalfW, topY);
+    this.ctx.lineTo(cx - topHalfW, topY);
+    this.ctx.closePath();
+    const grad = this.ctx.createLinearGradient(cx, baseY, cx, topY);
+    grad.addColorStop(0, 'rgba(255, 252, 230, 0.4)');
+    grad.addColorStop(0.25, 'rgba(255, 248, 200, 0.22)');
+    grad.addColorStop(0.55, 'rgba(255, 245, 180, 0.08)');
+    grad.addColorStop(1, 'rgba(255, 240, 200, 0)');
+    this.ctx.fillStyle = grad;
+    this.ctx.fill();
+  }
+
+  drawHeadlightGlow() {
+    this.ctx.save();
+    this.ctx.globalCompositeOperation = 'lighter';
+    if (this.player) {
+      const carTop = this.height - this._carH - 24;
+      this._drawHeadlightCone(this.player.x, carTop);
+    }
+    this.opponents.forEach((o) => {
+      this._drawHeadlightCone(this._laneCenter(o.lane), o.y);
+    });
+    this.ctx.restore();
+  }
+
   update(dt) {
     if (!this.player) return;
     const cappedDt = Math.min(dt, CarRacingGame.DT_MAX);
@@ -209,6 +305,7 @@ class CarRacingGame {
     this.player.x = Math.max(min, Math.min(max, this.player.x));
 
     if (this.state !== 'playing') return;
+    this._distancePixels += this.gameSpeed * cappedDt;
     this.opponents.forEach((o) => { o.y += this.gameSpeed * cappedDt; });
     for (let i = this.opponents.length - 1; i >= 0; i--) {
       if (this.opponents[i].y >= this.height + this._carH) this.opponents.splice(i, 1);
@@ -231,62 +328,155 @@ class CarRacingGame {
     }
   }
 
-  drawPlayer() {
+  _drawTopViewCar(cx, top, w, h, bodyColor, strokeColor, accentColor, facingUp = true) {
+    const left = cx - w / 2;
+    const thick = 2.5;
+    const taper = w * 0.1;
+    const cornerR = 8;
+    const frontW = w - 2 * taper;
+    const rearW = w - 2 * taper;
+    const fl = cx - frontW / 2;
+    const fr = cx + frontW / 2;
+    const rl = cx - rearW / 2;
+    const rr = cx + rearW / 2;
+    const t = top;
+    const b = top + h;
+    const frontBulge = Math.min(w * 0.18, h * 0.22);
+    const rearBulge = frontBulge;
+    // Body: front and rear bulge outward (semicircular curve), rounded corners
+    this.ctx.beginPath();
+    this.ctx.moveTo(fl + cornerR, t);
+    this.ctx.quadraticCurveTo(cx, t - frontBulge, fr - cornerR, t);
+    this.ctx.quadraticCurveTo(fr, t, fr, t + cornerR);
+    this.ctx.lineTo(rr, b - cornerR);
+    this.ctx.quadraticCurveTo(rr, b, rr - cornerR, b);
+    this.ctx.quadraticCurveTo(cx, b + rearBulge, rl + cornerR, b);
+    this.ctx.quadraticCurveTo(rl, b, rl, b - cornerR);
+    this.ctx.lineTo(fl, t + cornerR);
+    this.ctx.quadraticCurveTo(fl, t, fl + cornerR, t);
+    this.ctx.closePath();
+    this.ctx.fillStyle = bodyColor;
+    this.ctx.fill();
+    this.ctx.strokeStyle = strokeColor;
+    this.ctx.lineWidth = thick;
+    this.ctx.stroke();
+    const winW = w * 0.5;
+    const winH = h * 0.26;
+    const winLeft = cx - winW / 2;
+    const winR = 6;
+    const fwt = facingUp ? top + h * 0.08 : top + h - winH - h * 0.08;
+    const rwt = facingUp ? top + h - winH - h * 0.08 : top + h * 0.08;
+    // Front windshield — solid medium blue, D-shape, black outline
+    this.ctx.fillStyle = '#5b9bd5';
+    this.ctx.beginPath();
+    this.ctx.roundRect(winLeft, fwt, winW, winH, winR);
+    this.ctx.fill();
+    this.ctx.strokeStyle = strokeColor;
+    this.ctx.lineWidth = thick;
+    this.ctx.stroke();
+    // Rear window — solid medium blue, slightly smaller
+    this.ctx.fillStyle = '#5b9bd5';
+    this.ctx.beginPath();
+    this.ctx.roundRect(winLeft, rwt, winW * 0.9, winH, winR);
+    this.ctx.fill();
+    this.ctx.stroke();
+    // Side mirrors — thin strips, accent color, aligned with driver (front) seat
+    const mirrorW = w * 0.04;
+    const mirrorH = h * 0.18;
+    const mirrorY = top + h * 0.2;
+    this.ctx.fillStyle = accentColor;
+    this.ctx.strokeStyle = strokeColor;
+    this.ctx.fillRect(left - mirrorW * 0.8, mirrorY, mirrorW, mirrorH);
+    this.ctx.strokeRect(left - mirrorW * 0.8, mirrorY, mirrorW, mirrorH);
+    this.ctx.fillRect(left + w - mirrorW * 0.2, mirrorY, mirrorW, mirrorH);
+    this.ctx.strokeRect(left + w - mirrorW * 0.2, mirrorY, mirrorW, mirrorH);
+    // Headlights — two short thick black diagonals at front (top when facingUp)
+    const headY = facingUp ? top : top + h - h * 0.18;
+    this.ctx.fillStyle = strokeColor;
+    this.ctx.lineWidth = 2.5;
+    this.ctx.beginPath();
+    if (facingUp) {
+      this.ctx.moveTo(cx - w * 0.26, headY + h * 0.06);
+      this.ctx.lineTo(cx - w * 0.06, headY + h * 0.02);
+      this.ctx.moveTo(cx + w * 0.06, headY + h * 0.02);
+      this.ctx.lineTo(cx + w * 0.26, headY + h * 0.06);
+    } else {
+      this.ctx.moveTo(cx - w * 0.26, headY + h * 0.12);
+      this.ctx.lineTo(cx - w * 0.06, headY + h * 0.16);
+      this.ctx.moveTo(cx + w * 0.06, headY + h * 0.16);
+      this.ctx.lineTo(cx + w * 0.26, headY + h * 0.12);
+    }
+    this.ctx.stroke();
+  }
+
+  drawPlayer(offsetX = 0, offsetY = 0) {
     if (!this.player) return;
     const w = this._carW;
     const h = this._carH;
     const y = this.height - h - 24;
     const cx = this.player.x;
-    const backW = w;
-    const frontW = w * 0.72;
-    this.ctx.fillStyle = '#4ade80';
-    this.ctx.beginPath();
-    this.ctx.moveTo(cx - backW / 2, y + h);
-    this.ctx.lineTo(cx + backW / 2, y + h);
-    this.ctx.lineTo(cx + frontW / 2, y);
-    this.ctx.lineTo(cx - frontW / 2, y);
-    this.ctx.closePath();
-    this.ctx.fill();
-    this.ctx.strokeStyle = '#22c55e';
-    this.ctx.lineWidth = 2;
-    this.ctx.stroke();
-    // Cabin (windshield) hint
-    this.ctx.fillStyle = 'rgba(34, 197, 94, 0.5)';
-    this.ctx.beginPath();
-    this.ctx.moveTo(cx - frontW / 2 + 6, y + 18);
-    this.ctx.lineTo(cx + frontW / 2 - 6, y + 18);
-    this.ctx.lineTo(cx + frontW / 4, y + 6);
-    this.ctx.lineTo(cx - frontW / 4, y + 6);
-    this.ctx.closePath();
-    this.ctx.fill();
+    if (offsetX !== 0 || offsetY !== 0) {
+      this.ctx.save();
+      this.ctx.translate(offsetX, offsetY);
+    }
+    this._drawTopViewCar(cx, y, w, h, '#eab308', '#000', '#e09900', true);
+    if (offsetX !== 0 || offsetY !== 0) this.ctx.restore();
   }
 
-  drawOpponent(o) {
+  drawOpponent(o, offsetX = 0, offsetY = 0) {
     const w = this._carW;
     const h = this._carH;
     const cx = this._laneCenter(o.lane);
     const y = o.y;
-    const backW = w * 0.72;
-    const frontW = w;
-    this.ctx.fillStyle = '#f87171';
-    this.ctx.beginPath();
-    this.ctx.moveTo(cx - frontW / 2, y + h);
-    this.ctx.lineTo(cx + frontW / 2, y + h);
-    this.ctx.lineTo(cx + backW / 2, y);
-    this.ctx.lineTo(cx - backW / 2, y);
-    this.ctx.closePath();
-    this.ctx.fill();
-    this.ctx.strokeStyle = '#dc2626';
-    this.ctx.lineWidth = 2;
-    this.ctx.stroke();
+    if (offsetX !== 0 || offsetY !== 0) {
+      this.ctx.save();
+      this.ctx.translate(offsetX, offsetY);
+    }
+    this._drawTopViewCar(cx, y, w, h, '#f87171', '#000', '#ea580c', true);
+    if (offsetX !== 0 || offsetY !== 0) this.ctx.restore();
   }
 
   draw() {
+    let crashProgress = 0;
+    let crashJitterX = 0;
+    let crashJitterY = 0;
+    if (this.state === 'crashing' && this._crashStartTime != null) {
+      const elapsed = (performance.now() - this._crashStartTime) / 1000;
+      crashProgress = Math.min(1, elapsed / CarRacingGame.CRASH_DURATION);
+      const intensity = 6 * (1 - crashProgress);
+      crashJitterX = (Math.random() - 0.5) * 2 * intensity;
+      crashJitterY = (Math.random() - 0.5) * 2 * intensity;
+    }
     this.drawBackground();
     this.drawLanes();
-    this.opponents.forEach((o) => this.drawOpponent(o));
+    this._drawTopHud();
+    this.drawHeadlightGlow();
+    this.opponents.forEach((o) => {
+      const jx = (this.state === 'crashing' && o === this._crashOpponent) ? crashJitterX : 0;
+      const jy = (this.state === 'crashing' && o === this._crashOpponent) ? crashJitterY : 0;
+      this.drawOpponent(o, jx, jy);
+    });
     if (this.player) {
-      this.drawPlayer();
+      const jx = this.state === 'crashing' ? -crashJitterX : 0;
+      const jy = this.state === 'crashing' ? -crashJitterY : 0;
+      this.drawPlayer(jx, jy);
+    }
+    if ((this.state === 'crashing' || this.state === 'gameover') && this._crashPieces) {
+      this._crashPieces.forEach((p) => {
+        this.ctx.save();
+        this.ctx.translate(p.x, p.y);
+        this.ctx.rotate(p.rotation);
+        this.ctx.fillStyle = p.color;
+        this.ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        this.ctx.strokeStyle = '#000';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        this.ctx.restore();
+      });
+    }
+    if (this.state === 'crashing') {
+      this.ctx.fillStyle = `rgba(220, 50, 50, ${0.35 * (1 - crashProgress)})`;
+      this.ctx.fillRect(0, 0, this.width, this.height);
     }
     if (this.state === 'menu') {
       this.ctx.fillStyle = '#fff';
@@ -321,9 +511,24 @@ class CarRacingGame {
     const now = performance.now();
     const dt = prevTime ? Math.min((now - prevTime) / 1000, CarRacingGame.DT_MAX) : 0;
     if (this.state === 'playing') this.update(dt);
+    if (this.state === 'crashing') {
+      if (this._crashPieces) {
+        this._crashPieces.forEach((p) => {
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.rotation += p.rotSpeed * dt;
+        });
+      }
+      if (this._crashStartTime != null) {
+        const elapsed = (now - this._crashStartTime) / 1000;
+        if (elapsed >= CarRacingGame.CRASH_DURATION) {
+          this.state = 'gameover';
+          this._bindStartListener();
+        }
+      }
+    }
     this.draw();
-    if (this.state === 'playing') {
-      // Pass this frame's start time so next frame can compute dt correctly (rAF callback receives current frame time, not previous)
+    if (this.state === 'playing' || this.state === 'crashing') {
       this._animationId = requestAnimationFrame(() => this._tick(now));
     }
   }
@@ -335,7 +540,9 @@ class CarRacingGame {
     this._keys.left = false;
     this._keys.right = false;
     this.opponents = [];
-    this.gear = 0;
+    this._crashPieces = null;
+    this._distancePixels = 0;
+    this.gear = 1;
     this._applyGear();
     this._spawnAccum = 0;
     this._unbindStartListener();
@@ -382,16 +589,6 @@ class CarRacingGame {
     document.addEventListener('keydown', this._boundGameKeydown);
     document.addEventListener('keyup', this._boundGameKeyup);
 
-    const btnPause = document.getElementById('racing-btn-pause');
-    if (btnPause) {
-      const onPause = (e) => {
-        if (e.cancelable) e.preventDefault();
-        if (this.state === 'playing') { this.state = 'paused'; this.draw(); }
-        else if (this.state === 'paused') { this.state = 'playing'; this._tick(); }
-      };
-      btnPause.addEventListener('click', onPause);
-      this._touchHandlers = { btnPause, onPause };
-    }
   }
 
   _unbindGameKeys() {
@@ -425,7 +622,16 @@ class CarRacingGame {
       el.addEventListener('mouseup', removeP); el.addEventListener('mouseleave', removeP);
     };
     addPressedFeedback(btnLeft); addPressedFeedback(btnRight);
-    addPressedFeedback(document.getElementById('racing-btn-pause'));
+    const btnPause = document.getElementById('racing-btn-pause');
+    addPressedFeedback(btnPause);
+    if (btnPause) {
+      btnPause.addEventListener('click', (e) => {
+        if (e.cancelable) e.preventDefault();
+        if (this.state === 'menu' || this.state === 'gameover') this._onStart();
+        else if (this.state === 'playing') { this.state = 'paused'; this.draw(); }
+        else if (this.state === 'paused') { this.state = 'playing'; this._tick(); }
+      });
+    }
     const btnGearUp = document.getElementById('racing-btn-gear-up');
     const btnGearDown = document.getElementById('racing-btn-gear-down');
     addPressedFeedback(btnGearUp); addPressedFeedback(btnGearDown);
