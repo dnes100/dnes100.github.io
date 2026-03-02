@@ -15,7 +15,9 @@ categories: games
   - <span style="color:#787c7e;font-weight:bold;"><span style="display:inline-block;width:14px;height:14px;background:#787c7e;margin-right:6px;vertical-align:middle;border-radius:2px;"></span>Gray</span> — letter is not in the word.
 </div>
 
-<div id="wordle"></div>
+<div id="wordle">
+  <div id="wordle-msg" style="margin-bottom:8px;min-height:1.4em;font-size:0.9rem;color:#c62828;"></div>
+</div>
 
 <script>
 // Word lists by length. Replace with API fetch later.
@@ -44,7 +46,6 @@ class WordGuessingGame {
     this.currentColumnIndex = 0;
 
     const container = this._getContainer(this.containerId);
-    container.appendChild(this._createMessageElement());
     const { grid, rows } = this._buildGrid(this.numberOfTries, this.numberOfLetters);
     this.grid = grid;
     this.rows = rows;
@@ -58,18 +59,6 @@ class WordGuessingGame {
     if (this._boundKeyHandler) {
       document.removeEventListener('keydown', this._boundKeyHandler);
     }
-  }
-
-  _createMessageElement() {
-    const el = document.createElement('div');
-    el.id = this.containerId + '-msg';
-    Object.assign(el.style, {
-      marginBottom: '8px',
-      minHeight: '1.4em',
-      fontSize: '0.9rem',
-      color: '#c62828'
-    });
-    return el;
   }
 
   _createShowAnswerSection() {
@@ -378,7 +367,9 @@ class WordGuessingGame {
   _getContainer(containerId) {
     const container = document.getElementById(containerId);
     if (!container) throw new Error('WordGuessingGame: container not found: ' + containerId);
+    const msgEl = document.getElementById(containerId + '-msg');
     container.innerHTML = '';
+    if (msgEl) container.appendChild(msgEl);
     return container;
   }
 
