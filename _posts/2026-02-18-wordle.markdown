@@ -4,9 +4,6 @@ title: "Wordle - word guessing game"
 date: 2026-02-18
 categories: games
 ---
-
-A simple Wordle-style word guessing game. Play below.
-
 <div style="min-width:220px;" markdown="1">
 **How to play**
 - Guess the hidden word.
@@ -40,51 +37,65 @@ class WordGuessingGame {
   }
 
   async start() {
-    if (this._boundKeyHandler) {
-      document.removeEventListener('keydown', this._boundKeyHandler);
-    }
+    this._teardownPrevious();
     this._ended = false;
     this.targetWord = await this._pickTargetWord(this.numberOfLetters);
     this.currentRowIndex = 0;
     this.currentColumnIndex = 0;
 
     const container = this._getContainer(this.containerId);
-
-    const msgEl = document.createElement('div');
-    msgEl.id = this.containerId + '-msg';
-    msgEl.style.marginBottom = '8px';
-    msgEl.style.minHeight = '1.4em';
-    msgEl.style.fontSize = '0.9rem';
-    msgEl.style.color = '#c62828';
-    container.appendChild(msgEl);
-
+    container.appendChild(this._createMessageElement());
     const { grid, rows } = this._buildGrid(this.numberOfTries, this.numberOfLetters);
     this.grid = grid;
     this.rows = rows;
     container.appendChild(grid);
-
-    const showAnswerWrap = document.createElement('div');
-    showAnswerWrap.style.marginTop = '10px';
-    showAnswerWrap.style.fontSize = '0.85rem';
-    const showBtn = document.createElement('button');
-    showBtn.textContent = 'Show answer';
-    showBtn.style.padding = '4px 10px';
-    showBtn.style.fontSize = '0.8rem';
-    showBtn.style.cursor = 'pointer';
-    showBtn.style.borderRadius = '4px';
-    showBtn.style.border = '1px solid #d3d6da';
-    showBtn.style.background = '#f5f5f5';
-    const answerSpan = document.createElement('span');
-    answerSpan.style.marginLeft = '8px';
-    answerSpan.style.fontWeight = 'bold';
-    showBtn.addEventListener('click', () => {
-      answerSpan.textContent = this.targetWord.charAt(0).toUpperCase() + this.targetWord.slice(1);
-    });
-    showAnswerWrap.appendChild(showBtn);
-    showAnswerWrap.appendChild(answerSpan);
-    container.appendChild(showAnswerWrap);
+    container.appendChild(this._createShowAnswerSection());
 
     this._attachListeners();
+  }
+
+  _teardownPrevious() {
+    if (this._boundKeyHandler) {
+      document.removeEventListener('keydown', this._boundKeyHandler);
+    }
+  }
+
+  _createMessageElement() {
+    const el = document.createElement('div');
+    el.id = this.containerId + '-msg';
+    Object.assign(el.style, {
+      marginBottom: '8px',
+      minHeight: '1.4em',
+      fontSize: '0.9rem',
+      color: '#c62828'
+    });
+    return el;
+  }
+
+  _createShowAnswerSection() {
+    const wrap = document.createElement('div');
+    Object.assign(wrap.style, { marginTop: '10px', fontSize: '0.85rem' });
+
+    const btn = document.createElement('button');
+    btn.textContent = 'Show answer';
+    Object.assign(btn.style, {
+      padding: '4px 10px',
+      fontSize: '0.8rem',
+      cursor: 'pointer',
+      borderRadius: '4px',
+      border: '1px solid #d3d6da',
+      background: '#f5f5f5'
+    });
+
+    const answerSpan = document.createElement('span');
+    Object.assign(answerSpan.style, { marginLeft: '8px', fontWeight: 'bold' });
+    btn.addEventListener('click', () => {
+      answerSpan.textContent = this.targetWord.charAt(0).toUpperCase() + this.targetWord.slice(1);
+    });
+
+    wrap.appendChild(btn);
+    wrap.appendChild(answerSpan);
+    return wrap;
   }
 
   _attachListeners() {
