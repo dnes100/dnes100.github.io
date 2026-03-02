@@ -7,17 +7,21 @@ categories: games
 <div style="min-width:220px;" markdown="1">
 **How to play**
 - You drive forward; opponent cars come toward you from the top.
-- <span style="display:inline-block;padding:0 6px;margin:0 2px;background:#e0e0e0;border-radius:4px;font-weight:bold;">←</span> / <span style="display:inline-block;padding:0 6px;margin:0 2px;background:#e0e0e0;border-radius:4px;font-weight:bold;">→</span> (or A / D) to switch lanes. <span style="display:inline-block;padding:0 6px;margin:0 2px;background:#e0e0e0;border-radius:4px;font-weight:bold;">Space</span> to pause/resume. Overtake by staying in a different lane.
-- Speed increases over time. Avoid collisions — same lane + overlap = crash.
-- Tap the left/right buttons on mobile.
+- <span style="display:inline-block;padding:0 6px;margin:0 2px;background:#e0e0e0;border-radius:4px;font-weight:bold;">←</span> / <span style="display:inline-block;padding:0 6px;margin:0 2px;background:#e0e0e0;border-radius:4px;font-weight:bold;">→</span> (or A / D) to switch lanes. <span style="display:inline-block;padding:0 6px;margin:0 2px;background:#e0e0e0;border-radius:4px;font-weight:bold;">↑</span> / <span style="display:inline-block;padding:0 6px;margin:0 2px;background:#e0e0e0;border-radius:4px;font-weight:bold;">↓</span> (or W / S) to change gear (0–5). <span style="display:inline-block;padding:0 6px;margin:0 2px;background:#e0e0e0;border-radius:4px;font-weight:bold;">Space</span> to pause/resume. Overtake by staying in a different lane.
+- Avoid collisions — same lane + overlap = crash. Tap the left/right buttons on mobile; use +/− for gear.
 </div>
 
 <div id="racing-container">
   <canvas id="racing-canvas"></canvas>
-  <div id="racing-touch-controls" aria-label="Steer left and right">
+  <div id="racing-touch-controls" aria-label="Steer and gear">
     <button type="button" class="racing-btn" id="racing-btn-left" aria-label="Steer left">←</button>
     <button type="button" class="racing-btn" id="racing-btn-pause" aria-label="Pause">‖</button>
     <button type="button" class="racing-btn" id="racing-btn-right" aria-label="Steer right">→</button>
+  </div>
+  <div id="racing-gear-controls" aria-label="Change gear">
+    <button type="button" class="racing-btn" id="racing-btn-gear-down" aria-label="Gear down">−</button>
+    <span id="racing-gear-display" aria-live="polite">0</span>
+    <button type="button" class="racing-btn" id="racing-btn-gear-up" aria-label="Gear up">+</button>
   </div>
 </div>
 
@@ -31,14 +35,24 @@ categories: games
   margin: 0 auto;
   touch-action: none;
 }
-#racing-touch-controls {
+#racing-touch-controls,
+#racing-gear-controls {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 12px;
   margin-top: 12px;
   max-width: 300px;
   margin-left: auto;
   margin-right: auto;
+}
+#racing-gear-controls .racing-btn { flex: 1; max-width: 80px; }
+#racing-gear-display {
+  min-width: 2ch;
+  text-align: center;
+  font-weight: bold;
+  font-size: 20px;
+  color: #e0e0e0;
 }
 .racing-btn {
   min-height: 52px;
@@ -65,7 +79,9 @@ class CarRacingGame {
   static HEIGHT = 480;
   static LANES = 3;
   static PLAYER_SPEED = 500; // pixels per second when holding left/right
-  static BASE_SPEED = 120;   // road/opponent speed (pixels per second), increases over time
+  static BASE_SPEED = 120;   // road/opponent speed at gear 0
+  static GEAR_MAX = 5;
+  static SPEED_PER_GEAR = 24; // gameSpeed = BASE_SPEED + gear * SPEED_PER_GEAR
   static SPAWN_INTERVAL = 2; // seconds between opponent spawns
 
   constructor(options = {}) {
@@ -86,8 +102,16 @@ class CarRacingGame {
     this.player = null; // { x } — no lane; position only
     this._keys = { left: false, right: false };
     this.opponents = [];  // { lane, y } — move down, remove when off bottom
+    this.gear = 0;       // 0–5, controls gameSpeed
     this.gameSpeed = CarRacingGame.BASE_SPEED;
     this._spawnAccum = 0;
+  }
+
+  _applyGear() {
+    this.gear = Math.max(0, Math.min(CarRacingGame.GEAR_MAX, this.gear));
+    this.gameSpeed = CarRacingGame.BASE_SPEED + this.gear * CarRacingGame.SPEED_PER_GEAR;
+    const el = document.getElementById('racing-gear-display');
+    if (el) el.textContent = this.gear;
   }
 
   _laneCenter(lane) {
@@ -274,7 +298,8 @@ class CarRacingGame {
     this._keys.left = false;
     this._keys.right = false;
     this.opponents = [];
-    this.gameSpeed = CarRacingGame.BASE_SPEED;
+    this.gear = 0;
+    this._applyGear();
     this._spawnAccum = 0;
     this._unbindStartListener();
     this._bindGameKeys();
@@ -301,6 +326,16 @@ class CarRacingGame {
       if (e.code === 'ArrowRight' || e.code === 'KeyD') {
         e.preventDefault();
         this._keys.right = true;
+      }
+      if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+        e.preventDefault();
+        this.gear = Math.min(CarRacingGame.GEAR_MAX, this.gear + 1);
+        this._applyGear();
+      }
+      if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+        e.preventDefault();
+        this.gear = Math.max(0, this.gear - 1);
+        this._applyGear();
       }
     };
     this._boundGameKeyup = (e) => {
@@ -354,6 +389,27 @@ class CarRacingGame {
     };
     addPressedFeedback(btnLeft); addPressedFeedback(btnRight);
     addPressedFeedback(document.getElementById('racing-btn-pause'));
+    const btnGearUp = document.getElementById('racing-btn-gear-up');
+    const btnGearDown = document.getElementById('racing-btn-gear-down');
+    addPressedFeedback(btnGearUp); addPressedFeedback(btnGearDown);
+    if (btnGearUp) {
+      const onGearUp = (e) => {
+        if (e.cancelable) e.preventDefault();
+        if (this.state !== 'playing' && this.state !== 'paused') return;
+        this.gear = Math.min(CarRacingGame.GEAR_MAX, this.gear + 1);
+        this._applyGear();
+      };
+      btnGearUp.addEventListener('click', onGearUp);
+    }
+    if (btnGearDown) {
+      const onGearDown = (e) => {
+        if (e.cancelable) e.preventDefault();
+        if (this.state !== 'playing' && this.state !== 'paused') return;
+        this.gear = Math.max(0, this.gear - 1);
+        this._applyGear();
+      };
+      btnGearDown.addEventListener('click', onGearDown);
+    }
     const onLeftDown = (e) => {
       prevent(e);
       if (this.state === 'menu' || this.state === 'gameover') this._onStart();
@@ -406,6 +462,8 @@ class CarRacingGame {
     if (!this.init()) return;
     this.state = 'menu';
     this.player = { x: this.width / 2 };
+    this.gear = 0;
+    this._applyGear();
     this._bindStartListener();
     this._bindTouchControls();
     this.draw();
