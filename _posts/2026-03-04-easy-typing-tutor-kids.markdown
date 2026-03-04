@@ -113,23 +113,58 @@ categories: games
   gap: 6px;
   align-items: flex-end;
   padding-top: 8px; /* reserved for highlighted finger translateY(-8px) */
-  min-height: 52px; /* 8px spacer + 44px finger height */
+  min-height: 102px; /* 8px spacer + tallest finger ~94px */
 }
 .typing-tutor-finger {
-  width: 32px;
-  height: 44px;
+  position: relative;
   border-radius: 8px;
-  background: #d1d5db;
-  transition: background 0.2s ease, transform 0.2s ease;
+  /* Three segments with knuckle lines at ~33% and ~66% */
+  background:
+    linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.12) 33%, transparent 33%),
+    linear-gradient(to bottom, transparent 63%, rgba(0,0,0,0.08) 63%, rgba(0,0,0,0.12) 66%, transparent 66%),
+    linear-gradient(135deg, #e8e6e4 0%, #d8d4d0 20%, #d0ccc8 40%, #c4bfba 60%, #b8b2ac 80%, #aea8a2 100%);
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  clip-path: polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%);
 }
+.typing-tutor-finger::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48%;
+  height: 12%;
+  min-height: 8px;
+  background: rgba(255, 248, 240, 0.95);
+  border-radius: 50% 50% 40% 40%;
+  pointer-events: none;
+}
+/* Left hand: 1=pinky, 2=ring, 3=middle, 4=index, 5=thumb — longer finger proportions */
+#typing-tutor-hands .typing-tutor-hand:first-child .typing-tutor-finger:nth-child(1) { width: 26px; height: 78px; }
+#typing-tutor-hands .typing-tutor-hand:first-child .typing-tutor-finger:nth-child(2) { width: 30px; height: 84px; }
+#typing-tutor-hands .typing-tutor-hand:first-child .typing-tutor-finger:nth-child(3) { width: 32px; height: 94px; }
+#typing-tutor-hands .typing-tutor-hand:first-child .typing-tutor-finger:nth-child(4) { width: 30px; height: 84px; }
+#typing-tutor-hands .typing-tutor-hand:first-child .typing-tutor-finger:nth-child(5) { width: 38px; height: 68px; }
+/* Right hand: 1=thumb, 2=index, 3=middle, 4=ring, 5=pinky */
+#typing-tutor-hands .typing-tutor-hand:last-child .typing-tutor-finger:nth-child(1) { width: 38px; height: 68px; }
+#typing-tutor-hands .typing-tutor-hand:last-child .typing-tutor-finger:nth-child(2) { width: 30px; height: 84px; }
+#typing-tutor-hands .typing-tutor-hand:last-child .typing-tutor-finger:nth-child(3) { width: 32px; height: 94px; }
+#typing-tutor-hands .typing-tutor-hand:last-child .typing-tutor-finger:nth-child(4) { width: 30px; height: 84px; }
+#typing-tutor-hands .typing-tutor-hand:last-child .typing-tutor-finger:nth-child(5) { width: 26px; height: 78px; }
 .typing-tutor-finger.highlight {
   margin-bottom: 0; /* override Jekyll/Minima .highlight { margin-bottom: 15px } */
-  background: #fef08a;
+  background:
+    linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.06) 30%, rgba(0,0,0,0.1) 33%, transparent 33%),
+    linear-gradient(to bottom, transparent 63%, rgba(0,0,0,0.06) 63%, rgba(0,0,0,0.1) 66%, transparent 66%),
+    linear-gradient(135deg, #fef9c3 0%, #fef08a 25%, #fde047 50%, #facc15 75%, #eab308 100%);
   box-shadow: 0 0 0 2px #eab308;
   transform: translateY(-8px);
 }
 .typing-tutor-finger.typed {
-  background: #bbf7d0;
+  background:
+    linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.06) 30%, rgba(0,0,0,0.1) 33%, transparent 33%),
+    linear-gradient(to bottom, transparent 63%, rgba(0,0,0,0.06) 63%, rgba(0,0,0,0.1) 66%, transparent 66%),
+    linear-gradient(135deg, #bbf7d0 0%, #86efac 35%, #4ade80 70%, #22c55e 100%);
 }
 </style>
 
@@ -143,10 +178,10 @@ categories: games
       w: { hand: 'left', fingerIndex: 1 }, s: { hand: 'left', fingerIndex: 1 }, x: { hand: 'left', fingerIndex: 1 },
       e: { hand: 'left', fingerIndex: 2 }, d: { hand: 'left', fingerIndex: 2 }, c: { hand: 'left', fingerIndex: 2 },
       r: { hand: 'left', fingerIndex: 3 }, f: { hand: 'left', fingerIndex: 3 }, t: { hand: 'left', fingerIndex: 3 }, g: { hand: 'left', fingerIndex: 3 }, v: { hand: 'left', fingerIndex: 3 }, b: { hand: 'left', fingerIndex: 3 },
-      y: { hand: 'right', fingerIndex: 0 }, h: { hand: 'right', fingerIndex: 0 }, n: { hand: 'right', fingerIndex: 0 }, u: { hand: 'right', fingerIndex: 0 }, j: { hand: 'right', fingerIndex: 0 }, m: { hand: 'right', fingerIndex: 0 },
-      i: { hand: 'right', fingerIndex: 1 }, k: { hand: 'right', fingerIndex: 1 },
-      o: { hand: 'right', fingerIndex: 2 }, l: { hand: 'right', fingerIndex: 2 },
-      p: { hand: 'right', fingerIndex: 3 }
+      y: { hand: 'right', fingerIndex: 1 }, h: { hand: 'right', fingerIndex: 1 }, n: { hand: 'right', fingerIndex: 1 }, u: { hand: 'right', fingerIndex: 1 }, j: { hand: 'right', fingerIndex: 1 }, m: { hand: 'right', fingerIndex: 1 },
+      i: { hand: 'right', fingerIndex: 2 }, k: { hand: 'right', fingerIndex: 2 },
+      o: { hand: 'right', fingerIndex: 3 }, l: { hand: 'right', fingerIndex: 3 },
+      p: { hand: 'right', fingerIndex: 4 }
     },
     _leftKeys: ['q','w','e','r','t','a','s','d','f','g','z','x','c','v','b'],
     _rightKeys: ['y','u','i','o','p','h','j','k','l','n','m'],
