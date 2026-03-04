@@ -19,12 +19,29 @@ categories: games
   font-family: system-ui, sans-serif;
 }
 .typing-tutor-letters {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 1.75rem;
   margin-bottom: 1.5rem;
   min-height: 5rem;
+}
+.typing-tutor-emoji {
+  position: absolute;
+  left: calc(50% + 5.875rem + 0.5rem);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 4.5rem;
+  line-height: 1;
+}
+.typing-tutor-emoji.visible {
+  animation: typing-tutor-emoji-pop 0.4s ease;
+}
+@keyframes typing-tutor-emoji-pop {
+  0% { transform: translateY(-50%) scale(0); opacity: 0; }
+  60% { transform: translateY(-50%) scale(1.15); }
+  100% { transform: translateY(-50%) scale(1); opacity: 1; }
 }
 .typing-tutor-letter {
   font-size: 3.75rem;
@@ -372,9 +389,15 @@ categories: games
     } catch (e) {}
   }
 
+  var KID_EMOJIS = ['⭐', '🌟', '👍', '👏', '🎉', '🎈', '🌈', '✨', '🦋', '🐣', '🌻', '🎊', '🤗', '💫', '🌸', '🐶', '🐱', '🐰', '🐻', '🐼', '🦊', '🐸', '🐵', '🦁', '🐯', '🐨', '🐷', '🦄', '🐧', '🦕', '🦖', '☀️', '🌙', '🌍', '🪐', '🌎', '🌏'];
+
   TypingTutorApp.prototype.start = function () {
     this.lettersContainer = document.getElementById(this.lettersContainerId);
     if (!this.lettersContainer) return;
+
+    this.emojiEl = document.createElement('span');
+    this.emojiEl.className = 'typing-tutor-emoji';
+    this.emojiEl.setAttribute('aria-hidden', 'true');
 
     this.keyboard = new KeyboardDisplay(this.keyboardContainerId);
     this.hands = new HandsDisplay(this.handsContainerId);
@@ -402,6 +425,9 @@ categories: games
       self.letterEls.push(span);
       self.lettersContainer.appendChild(span);
     });
+    this.emojiEl.textContent = '';
+    this.emojiEl.classList.remove('visible');
+    this.lettersContainer.appendChild(this.emojiEl);
   };
 
   TypingTutorApp.prototype._updateHighlights = function () {
@@ -439,8 +465,10 @@ categories: games
 
     const allDone = this.states.every(function (s) { return s === 'correct'; });
     if (allDone) {
+      this.emojiEl.textContent = KID_EMOJIS[Math.floor(Math.random() * KID_EMOJIS.length)];
+      this.emojiEl.classList.add('visible');
       const self = this;
-      setTimeout(function () { self._newRound(); }, 600);
+      setTimeout(function () { self._newRound(); }, 1800);
     } else {
       this._updateHighlights();
     }
