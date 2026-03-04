@@ -14,7 +14,7 @@ categories: games
 
 <style>
 #typing-tutor-container {
-  max-width: 640px;
+  max-width: 720px;
   margin: 1rem 0;
   font-family: system-ui, sans-serif;
 }
@@ -22,15 +22,15 @@ categories: games
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1.75rem;
   margin-bottom: 1.5rem;
-  min-height: 4rem;
+  min-height: 5rem;
 }
 .typing-tutor-letter {
-  font-size: 3rem;
+  font-size: 3.75rem;
   font-weight: bold;
-  width: 4rem;
-  height: 4rem;
+  width: 5rem;
+  height: 5rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -56,24 +56,24 @@ categories: games
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin-bottom: 1.5rem;
-  padding: 12px;
+  padding: 16px;
   background: #e5e7eb;
   border-radius: 12px;
 }
 .typing-tutor-keyrow {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   justify-content: center;
 }
 .typing-tutor-key {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
+  font-size: 1.2rem;
   font-weight: 600;
   background: #fff;
   border: 2px solid #d1d5db;
@@ -391,15 +391,15 @@ categories: games
     if (!/^[a-z]$/.test(key)) return;
     e.preventDefault();
 
-    const index = this.letters.indexOf(key);
-    if (index === -1) {
+    const currentIndex = this.states.indexOf('pending');
+    if (currentIndex === -1) return;
+    if (key !== this.letters[currentIndex]) {
       this._flashWrong();
       return;
     }
-    if (this.states[index] !== 'pending') return;
 
-    this.states[index] = 'correct';
-    this.letterEls[index].className = 'typing-tutor-letter correct';
+    this.states[currentIndex] = 'correct';
+    this.letterEls[currentIndex].className = 'typing-tutor-letter correct';
     playKeySound();
 
     const allDone = this.states.every(function (s) { return s === 'correct'; });
