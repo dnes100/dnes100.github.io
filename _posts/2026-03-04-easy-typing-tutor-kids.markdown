@@ -79,7 +79,7 @@ categories: games
   border: 2px solid #d1d5db;
   border-radius: 8px;
   color: #374151;
-  text-transform: lowercase;
+  text-transform: uppercase;
 }
 .typing-tutor-key.current {
   background: #fef08a;
@@ -182,7 +182,7 @@ categories: games
         const keyEl = document.createElement('div');
         keyEl.className = 'typing-tutor-key';
         keyEl.setAttribute('data-key', key);
-        keyEl.textContent = key;
+        keyEl.textContent = key.toUpperCase();
         self.keyEls[key] = keyEl;
         rowEl.appendChild(keyEl);
       });
@@ -315,6 +315,28 @@ categories: games
     this._boundKeydown = null;
   }
 
+  function playKeySound() {
+    try {
+      var ctx = playKeySound.audioContext;
+      if (!ctx) {
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+        playKeySound.audioContext = ctx;
+      }
+      if (ctx.state === 'suspended') ctx.resume();
+      var now = ctx.currentTime;
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 520;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      osc.start(now);
+      osc.stop(now + 0.08);
+    } catch (e) {}
+  }
+
   TypingTutorApp.prototype.start = function () {
     this.lettersContainer = document.getElementById(this.lettersContainerId);
     if (!this.lettersContainer) return;
@@ -378,6 +400,7 @@ categories: games
 
     this.states[index] = 'correct';
     this.letterEls[index].className = 'typing-tutor-letter correct';
+    playKeySound();
 
     const allDone = this.states.every(function (s) { return s === 'correct'; });
     if (allDone) {
