@@ -1,16 +1,10 @@
 ---
 layout: post
-title: "Easy typing tutor for kids (2–5 yrs)"
+title: "Easy typing tutor"
 date: 2026-03-04
 categories: games
 ---
 
-<div style="min-width:220px;" markdown="1">
-**How to play**
-- Two letters appear: one for your **left** hand, one for your **right** hand.
-- Type them on the keyboard in any order. Correct key = green; wrong key = quick red flash.
-- The keyboard and hand pictures show which finger to use. When you finish both, two new letters appear.
-</div>
 
 <div id="typing-tutor-container">
   <div id="typing-tutor-letters" class="typing-tutor-letters" aria-live="polite"></div>
@@ -118,6 +112,8 @@ categories: games
   display: flex;
   gap: 6px;
   align-items: flex-end;
+  padding-top: 8px; /* reserved for highlighted finger translateY(-8px) */
+  min-height: 52px; /* 8px spacer + 44px finger height */
 }
 .typing-tutor-finger {
   width: 32px;
@@ -127,8 +123,10 @@ categories: games
   transition: background 0.2s ease, transform 0.2s ease;
 }
 .typing-tutor-finger.highlight {
+  margin-bottom: 0; /* override Jekyll/Minima .highlight { margin-bottom: 15px } */
   background: #fef08a;
   box-shadow: 0 0 0 2px #eab308;
+  transform: translateY(-8px);
 }
 .typing-tutor-finger.typed {
   background: #bbf7d0;
@@ -139,37 +137,28 @@ categories: games
 'use strict';
 
 /** QWERTY US: key (lowercase) -> { hand: 'left'|'right', fingerIndex: 0..4 } */
-  var KEY_TO_FINGER = {
-    q: { hand: 'left', fingerIndex: 0 }, a: { hand: 'left', fingerIndex: 0 }, z: { hand: 'left', fingerIndex: 0 },
-    w: { hand: 'left', fingerIndex: 1 }, s: { hand: 'left', fingerIndex: 1 }, x: { hand: 'left', fingerIndex: 1 },
-    e: { hand: 'left', fingerIndex: 2 }, d: { hand: 'left', fingerIndex: 2 }, c: { hand: 'left', fingerIndex: 2 },
-    r: { hand: 'left', fingerIndex: 3 }, f: { hand: 'left', fingerIndex: 3 }, t: { hand: 'left', fingerIndex: 3 }, g: { hand: 'left', fingerIndex: 3 }, v: { hand: 'left', fingerIndex: 3 }, b: { hand: 'left', fingerIndex: 3 },
-    y: { hand: 'right', fingerIndex: 0 }, h: { hand: 'right', fingerIndex: 0 }, n: { hand: 'right', fingerIndex: 0 }, u: { hand: 'right', fingerIndex: 0 }, j: { hand: 'right', fingerIndex: 0 }, m: { hand: 'right', fingerIndex: 0 },
-    i: { hand: 'right', fingerIndex: 1 }, k: { hand: 'right', fingerIndex: 1 },
-    o: { hand: 'right', fingerIndex: 2 }, l: { hand: 'right', fingerIndex: 2 },
-    p: { hand: 'right', fingerIndex: 3 }
+  const FingerMap = {
+    _keyToFinger: {
+      q: { hand: 'left', fingerIndex: 0 }, a: { hand: 'left', fingerIndex: 0 }, z: { hand: 'left', fingerIndex: 0 },
+      w: { hand: 'left', fingerIndex: 1 }, s: { hand: 'left', fingerIndex: 1 }, x: { hand: 'left', fingerIndex: 1 },
+      e: { hand: 'left', fingerIndex: 2 }, d: { hand: 'left', fingerIndex: 2 }, c: { hand: 'left', fingerIndex: 2 },
+      r: { hand: 'left', fingerIndex: 3 }, f: { hand: 'left', fingerIndex: 3 }, t: { hand: 'left', fingerIndex: 3 }, g: { hand: 'left', fingerIndex: 3 }, v: { hand: 'left', fingerIndex: 3 }, b: { hand: 'left', fingerIndex: 3 },
+      y: { hand: 'right', fingerIndex: 0 }, h: { hand: 'right', fingerIndex: 0 }, n: { hand: 'right', fingerIndex: 0 }, u: { hand: 'right', fingerIndex: 0 }, j: { hand: 'right', fingerIndex: 0 }, m: { hand: 'right', fingerIndex: 0 },
+      i: { hand: 'right', fingerIndex: 1 }, k: { hand: 'right', fingerIndex: 1 },
+      o: { hand: 'right', fingerIndex: 2 }, l: { hand: 'right', fingerIndex: 2 },
+      p: { hand: 'right', fingerIndex: 3 }
+    },
+    _leftKeys: ['q','w','e','r','t','a','s','d','f','g','z','x','c','v','b'],
+    _rightKeys: ['y','u','i','o','p','h','j','k','l','n','m'],
+    get: function (key) {
+      return this._keyToFinger[key ? key.toLowerCase() : ''];
+    },
+    pickTwoLetters: function () {
+      const left = this._leftKeys[Math.floor(Math.random() * this._leftKeys.length)];
+      const right = this._rightKeys[Math.floor(Math.random() * this._rightKeys.length)];
+      return [left, right];
+    }
   };
-
-  var LEFT_KEYS = ['q','w','e','r','t','a','s','d','f','g','z','x','c','v','b'];
-  var RIGHT_KEYS = ['y','u','i','o','p','h','j','k','l','n','m'];
-
-  function pickTwoLetters() {
-    var left = LEFT_KEYS[Math.floor(Math.random() * LEFT_KEYS.length)];
-    var right = RIGHT_KEYS[Math.floor(Math.random() * RIGHT_KEYS.length)];
-    return [left, right];
-  }
-
-  function FingerMap() {}
-  FingerMap.get = function (key) {
-    return KEY_TO_FINGER[key ? key.toLowerCase() : ''];
-  };
-  FingerMap.pickTwoLetters = pickTwoLetters;
-
-  var KEYBOARD_ROWS = [
-    ['q','w','e','r','t','y','u','i','o','p'],
-    ['a','s','d','f','g','h','j','k','l'],
-    ['z','x','c','v','b','n','m']
-  ];
 
   function KeyboardDisplay(containerId) {
     this.container = document.getElementById(containerId);
@@ -177,14 +166,20 @@ categories: games
     if (this.container) this._build();
   }
 
+  KeyboardDisplay.KEYBOARD_ROWS = [
+    ['q','w','e','r','t','y','u','i','o','p'],
+    ['a','s','d','f','g','h','j','k','l'],
+    ['z','x','c','v','b','n','m']
+  ];
+
   KeyboardDisplay.prototype._build = function () {
     this.container.innerHTML = '';
-    var self = this;
-    KEYBOARD_ROWS.forEach(function (row) {
-      var rowEl = document.createElement('div');
+    const self = this;
+    KeyboardDisplay.KEYBOARD_ROWS.forEach(function (row) {
+      const rowEl = document.createElement('div');
       rowEl.className = 'typing-tutor-keyrow';
       row.forEach(function (key) {
-        var keyEl = document.createElement('div');
+        const keyEl = document.createElement('div');
         keyEl.className = 'typing-tutor-key';
         keyEl.setAttribute('data-key', key);
         keyEl.textContent = key;
@@ -196,16 +191,16 @@ categories: games
   };
 
   KeyboardDisplay.prototype.setCurrent = function (keys) {
-    var keyList = Array.isArray(keys) ? keys : (keys ? [keys.toLowerCase()] : []);
+    const keyList = Array.isArray(keys) ? keys : (keys ? [keys.toLowerCase()] : []);
     Object.keys(this.keyEls).forEach(function (key) {
-      var el = this.keyEls[key];
+      const el = this.keyEls[key];
       el.classList.remove('current');
       if (keyList.indexOf(key) !== -1) el.classList.add('current');
     }, this);
   };
 
   KeyboardDisplay.prototype.setTyped = function (key) {
-    var k = key ? key.toLowerCase() : null;
+    const k = key ? key.toLowerCase() : null;
     if (k && this.keyEls[k]) {
       this.keyEls[k].classList.remove('current');
       this.keyEls[k].classList.add('typed');
@@ -228,13 +223,13 @@ categories: games
 
   HandsDisplay.prototype._build = function () {
     this.container.innerHTML = '';
-    var leftBox = document.createElement('div');
+    const leftBox = document.createElement('div');
     leftBox.className = 'typing-tutor-hand';
     leftBox.innerHTML = '<span class="typing-tutor-hand-title">Left hand</span>';
-    var leftRow = document.createElement('div');
+    const leftRow = document.createElement('div');
     leftRow.className = 'typing-tutor-fingers';
-    for (var i = 0; i < 5; i++) {
-      var f = document.createElement('div');
+    for (let i = 0; i < 5; i++) {
+      const f = document.createElement('div');
       f.className = 'typing-tutor-finger';
       f.setAttribute('data-hand', 'left');
       f.setAttribute('data-finger', String(i));
@@ -245,13 +240,13 @@ categories: games
     leftBox.appendChild(leftRow);
     this.container.appendChild(leftBox);
 
-    var rightBox = document.createElement('div');
+    const rightBox = document.createElement('div');
     rightBox.className = 'typing-tutor-hand';
     rightBox.innerHTML = '<span class="typing-tutor-hand-title">Right hand</span>';
-    var rightRow = document.createElement('div');
+    const rightRow = document.createElement('div');
     rightRow.className = 'typing-tutor-fingers';
-    for (var j = 0; j < 5; j++) {
-      var g = document.createElement('div');
+    for (let j = 0; j < 5; j++) {
+      const g = document.createElement('div');
       g.className = 'typing-tutor-finger';
       g.setAttribute('data-hand', 'right');
       g.setAttribute('data-finger', String(j));
@@ -268,7 +263,7 @@ categories: games
   };
 
   HandsDisplay.prototype.highlightFingers = function (pairs) {
-    var set = {};
+    const set = {};
     (pairs || []).forEach(function (p) {
       set[p.hand + '-' + p.fingerIndex] = true;
     });
@@ -283,7 +278,7 @@ categories: games
   };
 
   HandsDisplay.prototype.setTyped = function (hand, fingerIndex) {
-    var arr = hand === 'left' ? this.leftFingers : this.rightFingers;
+    const arr = hand === 'left' ? this.leftFingers : this.rightFingers;
     if (arr[fingerIndex]) {
       arr[fingerIndex].classList.remove('highlight');
       arr[fingerIndex].classList.add('typed');
@@ -296,9 +291,9 @@ categories: games
   };
 
   HandsDisplay.prototype.updateForKeys = function (currentLetters) {
-    var pairs = [];
+    const pairs = [];
     currentLetters.forEach(function (letter) {
-      var info = FingerMap.get(letter);
+      const info = FingerMap.get(letter);
       if (info) pairs.push({ hand: info.hand, fingerIndex: info.fingerIndex });
     });
     this.highlightFingers(pairs);
@@ -341,9 +336,9 @@ categories: games
   TypingTutorApp.prototype._renderLetters = function () {
     this.lettersContainer.innerHTML = '';
     this.letterEls = [];
-    var self = this;
+    const self = this;
     this.letters.forEach(function (letter, i) {
-      var span = document.createElement('span');
+      const span = document.createElement('span');
       span.className = 'typing-tutor-letter ' + self.states[i];
       span.setAttribute('data-index', String(i));
       span.textContent = letter.toUpperCase();
@@ -353,13 +348,14 @@ categories: games
   };
 
   TypingTutorApp.prototype._updateHighlights = function () {
-    var pending = [];
+    const pending = [];
     this.letters.forEach(function (letter, i) {
       if (this.states[i] === 'pending') pending.push(letter);
     }, this);
     if (pending.length > 0) {
-      this.keyboard.setCurrent(pending);
-      this.hands.updateForKeys(pending);
+      const currentLetter = pending[0];
+      this.keyboard.setCurrent(currentLetter);
+      this.hands.updateForKeys([currentLetter]);
     } else {
       this.keyboard.clearTyped();
       this.hands.clearHighlight();
@@ -368,13 +364,12 @@ categories: games
 
   TypingTutorApp.prototype._onKeyDown = function (e) {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    var key = e.key;
+    const key = (e.key || '').toLowerCase();
     if (!key || key.length !== 1) return;
-    key = key.toLowerCase();
     if (!/^[a-z]$/.test(key)) return;
     e.preventDefault();
 
-    var index = this.letters.indexOf(key);
+    const index = this.letters.indexOf(key);
     if (index === -1) {
       this._flashWrong();
       return;
@@ -383,13 +378,10 @@ categories: games
 
     this.states[index] = 'correct';
     this.letterEls[index].className = 'typing-tutor-letter correct';
-    this.keyboard.setTyped(key);
-    var info = FingerMap.get(key);
-    if (info) this.hands.setTyped(info.hand, info.fingerIndex);
 
-    var allDone = this.states.every(function (s) { return s === 'correct'; });
+    const allDone = this.states.every(function (s) { return s === 'correct'; });
     if (allDone) {
-      var self = this;
+      const self = this;
       setTimeout(function () { self._newRound(); }, 600);
     } else {
       this._updateHighlights();
@@ -397,14 +389,14 @@ categories: games
   };
 
   TypingTutorApp.prototype._flashWrong = function () {
-    var self = this;
-    this.letterEls.forEach(function (el, i) {
-      if (self.states[i] !== 'pending') return;
-      el.classList.add('wrong');
-      setTimeout(function () {
-        el.classList.remove('wrong');
-      }, 400);
-    });
+    const currentIndex = this.states.indexOf('pending');
+    if (currentIndex === -1) return;
+    const el = this.letterEls[currentIndex];
+    if (!el) return;
+    el.classList.add('wrong');
+    setTimeout(function () {
+      el.classList.remove('wrong');
+    }, 400);
   };
 
   TypingTutorApp.prototype._bindKeydown = function () {
@@ -413,7 +405,7 @@ categories: games
   };
 
 document.addEventListener('DOMContentLoaded', function () {
-  var app = new TypingTutorApp();
+  const app = new TypingTutorApp();
   app.start();
 });
 </script>
